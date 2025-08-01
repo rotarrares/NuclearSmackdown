@@ -5,10 +5,14 @@ import "@fontsource/inter";
 
 import Globe from "./components/Globe";
 import GameUI from "./components/GameUI";
+import { BuildingOptions } from "./components/BuildingOptions";
+import { useGameState } from "./lib/stores/useGameState";
 import { useMultiplayer } from "./lib/stores/useMultiplayer";
 
 function App() {
   const { connect, isConnected } = useMultiplayer();
+  const { buildingOptions, setBuildingOptions } = useGameState();
+  const { buildStructure } = useMultiplayer();
 
   useEffect(() => {
     // Connect to multiplayer server on app start
@@ -60,6 +64,20 @@ function App() {
 
       {/* Game UI Overlay */}
       <GameUI />
+      
+      {/* Building Options Popup */}
+      {buildingOptions && (
+        <BuildingOptions
+          tileId={buildingOptions.tileId}
+          canBuildPort={buildingOptions.canBuildPort}
+          onBuild={(structureType) => {
+            buildStructure(buildingOptions.tileId, structureType);
+            setBuildingOptions(null);
+          }}
+          onClose={() => setBuildingOptions(null)}
+          position={buildingOptions.position}
+        />
+      )}
       
       {/* Connection Status */}
       {!isConnected && (

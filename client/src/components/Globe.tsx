@@ -5,7 +5,6 @@ import { GlobeGeometry } from "../lib/geometry/GlobeGeometry";
 import { useGameState } from "../lib/stores/useGameState";
 import { useMultiplayer } from "../lib/stores/useMultiplayer";
 import { Tile, Player } from "../lib/types/game";
-import { BuildingOptions } from "./BuildingOptions";
 
 const Globe = () => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -16,11 +15,7 @@ const Globe = () => {
   const { selectTile, buildStructure } = useMultiplayer();
   
   const [isHovering, setIsHovering] = useState(false);
-  const [buildingOptions, setBuildingOptions] = useState<{
-    tileId: number;
-    canBuildPort: boolean;
-    position: { x: number; y: number };
-  } | null>(null);
+
 
   // Generate globe geometry once
   const { geometry, borderGeometry, tileData } = useMemo(() => {
@@ -122,8 +117,8 @@ const Globe = () => {
       if (!gameStateTile?.ownerId) {
         selectTile(hoveredTile.id);
       } else if (gameStateTile.ownerId === currentPlayer.id) {
-        // Show building options for owned tiles
-        setBuildingOptions({
+        // Show building options for owned tiles - use game state store
+        useGameState.getState().setBuildingOptions({
           tileId: hoveredTile.id,
           canBuildPort: true, // Will be determined by server
           position: { x: window.innerWidth / 2, y: window.innerHeight / 2 }
@@ -178,19 +173,7 @@ const Globe = () => {
         </mesh>
       )}
       
-      {/* Building options popup */}
-      {buildingOptions && (
-        <BuildingOptions
-          tileId={buildingOptions.tileId}
-          canBuildPort={buildingOptions.canBuildPort}
-          onBuild={(structureType) => {
-            buildStructure(buildingOptions.tileId, structureType);
-            setBuildingOptions(null);
-          }}
-          onClose={() => setBuildingOptions(null)}
-          position={buildingOptions.position}
-        />
-      )}
+
     </group>
   );
 };

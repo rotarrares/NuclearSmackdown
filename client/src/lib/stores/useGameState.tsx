@@ -15,6 +15,13 @@ interface GameState {
   tiles: Map<number, GameTile>;
   hoveredTile: TileData | null;
   
+  // UI state
+  buildingOptions: {
+    tileId: number;
+    canBuildPort: boolean;
+    position: { x: number; y: number };
+  } | null;
+  
   // Game time
   gameTime: number;
   
@@ -26,6 +33,7 @@ interface GameState {
   removePlayer: (playerId: string) => void;
   updateTile: (tileId: number, updates: Partial<GameTile>) => void;
   setHoveredTile: (tile: TileData | null) => void;
+  setBuildingOptions: (options: { tileId: number; canBuildPort: boolean; position: { x: number; y: number }; } | null) => void;
   updateGameTime: (time: number) => void;
   
   // Bulk updates from server
@@ -43,6 +51,7 @@ export const useGameState = create<GameState>()(
     currentPlayer: null,
     tiles: new Map(),
     hoveredTile: null,
+    buildingOptions: null,
     gameTime: 0,
     
     setGamePhase: (phase) => set({ gamePhase: phase }),
@@ -102,6 +111,8 @@ export const useGameState = create<GameState>()(
     }),
     
     setHoveredTile: (tile) => set({ hoveredTile: tile }),
+    
+    setBuildingOptions: (options) => set({ buildingOptions: options }),
     
     updateGameTime: (time) => set({ gameTime: time }),
     
