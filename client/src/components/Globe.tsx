@@ -61,6 +61,10 @@ const Globe = () => {
         }
       }
       
+      if (gameStateTile?.isIrradiated) {
+        color.lerp(new THREE.Color(0x00ff00), 0.5); // Blend with green for irradiated
+      }
+      
       // Color all vertices of this tile
       for (let i = 0; i < tile.vertices.length; i++) {
         const vertexIndex = tile.startVertex + i;
@@ -207,6 +211,10 @@ const Globe = () => {
           case 'missile_silo':
             buildingColor = 0xff4444; // Red
             buildingSize = 0.008;
+            break;
+          case 'base_hq':
+            buildingColor = 0x00ff00; // Green
+            buildingSize = 0.015;
             break;
         }
         

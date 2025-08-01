@@ -25,18 +25,20 @@ export interface Player {
   population: number;
   workerRatio: number; // 0-1, percentage of population that are workers (vs soldiers)
   lastActive: number;
+  allianceId?: string;
 }
 
 export interface GameTile {
   id: number;
   ownerId?: string;
-  structureType?: 'city' | 'port' | 'missile_silo';
+  structureType?: 'city' | 'port' | 'missile_silo' | 'base_hq';
   population: number;
   terrainType: 'water' | 'grass' | 'desert' | 'mountain';
+  isIrradiated?: boolean;
 }
 
 export interface GameMessage {
-  type: 'spawn_player' | 'select_tile' | 'expand_territory' | 'adjust_worker_ratio' | 'build_structure' | 'launch_missile';
+  type: 'spawn_player' | 'select_tile' | 'expand_territory' | 'adjust_worker_ratio' | 'build_structure' | 'launch_missile' | 'create_alliance' | 'join_alliance' | 'leave_alliance' | 'kick_from_alliance';
   data: any;
 }
 
@@ -49,3 +51,14 @@ export interface Missile {
   travelTime: number; // milliseconds for missile to reach target
   trajectory: [number, number, number][]; // 3D points along the path
 }
+
+
+export interface Alliance {
+  id: string;
+  name: string;
+  leaderId: string;
+  memberIds: string[];
+  isPublic: boolean;
+}
+
+
