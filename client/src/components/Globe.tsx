@@ -6,123 +6,112 @@ import { useGameState } from "../lib/stores/useGameState";
 import { useMultiplayer } from "../lib/stores/useMultiplayer";
 import { Tile, Player } from "../lib/types/game";
 
-const Globe = () => {
+// Individual tile component for better interaction
+const TileComponent = ({ tile, gameStateTile, players, onHover, onClick }: any) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Create triangle geometry for this tile
+  const geometry = useMemo(() => {
+    const geom = new THREE.BufferGeometry();
+    const positions = new Float32Array(9); // 3 vertices * 3 components
+    
+    tile.vertices.forEach((vertex: THREE.Vector3, index: number) => {
+      positions[index * 3] = vertex.x;
+      positions[index * 3 + 1] = vertex.y;
+      positions[index * 3 + 2] = vertex.z;
+    });
+    
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setIndex([0, 1, 2]);
+    geom.computeVertexNormals();
+    return geom;
+  }, [tile]);
+  
+  // Determine tile color
+  const color = useMemo(() => {
+    if (gameStateTile?.ownerId) {
+      const owner = players.get(gameStateTile.ownerId);
+      return owner ? owner.color : '#2a4a3a';
+    }
+    return '#2a4a3a'; // Default green
+  }, [gameStateTile, players]);
+  
+  return (
+    <mesh
+      ref={meshRef}
+      geometry={geometry}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        onHover(tile);
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(tile);
+      }}
+    >
+      <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+    </mesh>
+  );
+};
+
+const Globe = () => {
   const borderRef = useRef<THREE.LineSegments>(null);
-  const { camera, raycaster, pointer } = useThree();
   
   const { tiles, players, currentPlayer, hoveredTile, setHoveredTile } = useGameState();
-  const { selectTile, expandTerritory } = useMultiplayer();
+  const { selectTile } = useMultiplayer();
   
   const [isHovering, setIsHovering] = useState(false);
 
   // Generate globe geometry once
-  const { geometry, borderGeometry, tileData } = useMemo(() => {
+  const { borderGeometry, tileData } = useMemo(() => {
     const globeGeom = new GlobeGeometry();
     return {
-      geometry: globeGeom.getGeometry(),
       borderGeometry: globeGeom.getBorderGeometry(),
       tileData: globeGeom.getTileData()
     };
   }, []);
 
-  // Create color attribute for tiles based on ownership
-  const colorAttribute = useMemo(() => {
-    const colors = new Float32Array(geometry.attributes.position.count * 3);
-    
-    tileData.forEach((tile, index) => {
+  const handleTileHover = useCallback((tile: any) => {
+    setHoveredTile(tile);
+    setIsHovering(true);
+  }, [setHoveredTile]);
+
+  const handleTileClick = useCallback((tile: any) => {
+    if (currentPlayer) {
       const gameStateTile = tiles.get(tile.id);
-      let color = new THREE.Color(0x2a4a3a); // Default dark green
-      
-      if (gameStateTile?.ownerId) {
-        const owner = players.get(gameStateTile.ownerId);
-        if (owner) {
-          color = new THREE.Color(owner.color);
-        }
-      }
-      
-      // Each tile has 3 vertices (triangle), color them all the same
-      for (let i = 0; i < 3; i++) {
-        const vertexIndex = index * 3 + i;
-        colors[vertexIndex * 3] = color.r;
-        colors[vertexIndex * 3 + 1] = color.g;
-        colors[vertexIndex * 3 + 2] = color.b;
-      }
-    });
-    
-    return new THREE.BufferAttribute(colors, 3);
-  }, [tiles, players, tileData, geometry]);
-
-  // Update colors when game state changes
-  useFrame(() => {
-    if (meshRef.current) {
-      meshRef.current.geometry.setAttribute('color', colorAttribute);
-      meshRef.current.geometry.attributes.color.needsUpdate = true;
-    }
-  });
-
-  // Handle mouse interactions
-  const handlePointerMove = useCallback((event: any) => {
-    if (!meshRef.current) return;
-    
-    raycaster.setFromCamera(pointer, camera);
-    const intersects = raycaster.intersectObject(meshRef.current);
-    
-    if (intersects.length > 0) {
-      const intersect = intersects[0];
-      const faceIndex = intersect.faceIndex;
-      
-      if (faceIndex !== undefined && faceIndex !== null) {
-        // Each face corresponds directly to a tile (simplified geometry)
-        const tile = tileData[faceIndex];
-        
-        if (tile && tile.id !== hoveredTile?.id) {
-          setHoveredTile(tile);
-          setIsHovering(true);
-        }
-      }
-    } else {
-      setHoveredTile(null);
-      setIsHovering(false);
-    }
-  }, [camera, raycaster, pointer, tileData, hoveredTile, setHoveredTile]);
-
-  const handleClick = useCallback(() => {
-    if (hoveredTile && currentPlayer) {
-      const gameStateTile = tiles.get(hoveredTile.id);
       
       // If tile is unowned or we want to expand, try to claim it
       if (!gameStateTile?.ownerId) {
-        selectTile(hoveredTile.id);
+        selectTile(tile.id);
       } else if (gameStateTile.ownerId === currentPlayer.id) {
-        // Could implement other actions for owned tiles
-        console.log("Clicked owned tile:", hoveredTile.id);
+        console.log("Clicked owned tile:", tile.id);
       } else {
-        // Could implement attack logic
-        console.log("Clicked enemy tile:", hoveredTile.id);
+        console.log("Clicked enemy tile:", tile.id);
       }
     }
-  }, [hoveredTile, currentPlayer, tiles, selectTile]);
+  }, [currentPlayer, tiles, selectTile]);
 
   return (
-    <group>
-      {/* Main globe mesh */}
-      <mesh
-        ref={meshRef}
-        geometry={geometry}
-        onPointerMove={handlePointerMove}
-        onClick={handleClick}
-        onPointerLeave={() => {
-          setHoveredTile(null);
-          setIsHovering(false);
-        }}
-      >
-        <meshLambertMaterial 
-          vertexColors={true}
-          transparent={true}
-          opacity={0.9}
-        />
-      </mesh>
+    <group
+      onPointerLeave={() => {
+        setHoveredTile(null);
+        setIsHovering(false);
+      }}
+    >
+      {/* Render each tile as a separate mesh for better interaction */}
+      {tileData.map((tile) => {
+        const gameStateTile = tiles.get(tile.id);
+        return (
+          <TileComponent
+            key={tile.id}
+            tile={tile}
+            gameStateTile={gameStateTile}
+            players={players}
+            onHover={handleTileHover}
+            onClick={handleTileClick}
+          />
+        );
+      })}
 
       {/* Tile borders */}
       <lineSegments
@@ -132,20 +121,19 @@ const Globe = () => {
         <lineBasicMaterial 
           color={0xffffff} 
           transparent={true}
-          opacity={0.3}
+          opacity={0.1}
           linewidth={1}
         />
       </lineSegments>
 
       {/* Hover highlight */}
       {hoveredTile && (
-        <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[1.005, 32, 32]} />
+        <mesh position={hoveredTile.center}>
+          <sphereGeometry args={[0.02, 8, 8]} />
           <meshBasicMaterial 
             color={0xffff00}
             transparent={true}
-            opacity={0.2}
-            side={THREE.DoubleSide}
+            opacity={0.8}
           />
         </mesh>
       )}

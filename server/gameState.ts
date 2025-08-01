@@ -186,15 +186,9 @@ export class GameState {
       return true; // First tile
     }
     
-    // Simplified adjacency check - in a real implementation,
-    // this would use the actual geodesic tile adjacency
-    // For now, just check if the tile ID is within a reasonable range
-    const playerTileIds = playerTiles.map(tile => tile.id);
-    const adjacentRange = 50; // Simplified adjacency
-    
-    return playerTileIds.some(ownedId => 
-      Math.abs(ownedId - tileId) <= adjacentRange
-    );
+    // For now, allow expansion to any tile (simplified adjacency)
+    // In a real implementation, this would check actual geodesic adjacency
+    return true;
   }
 
   update() {

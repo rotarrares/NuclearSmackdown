@@ -199,7 +199,7 @@ export class GlobeGeometry {
 
   private createMeshGeometry(): THREE.BufferGeometry {
     const positions: number[] = [];
-    const indices: number[] = [];
+    const colors: number[] = [];
     let vertexIndex = 0;
 
     this.tiles.forEach((tile, tileIndex) => {
@@ -209,15 +209,23 @@ export class GlobeGeometry {
       // Add tile vertices (each tile is a triangle)
       tile.vertices.forEach(vertex => {
         positions.push(vertex.x, vertex.y, vertex.z);
+        // Default color - will be updated by component
+        colors.push(0.2, 0.6, 0.3); // Green
       });
 
-      // Each tile is one triangle
-      indices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
       vertexIndex += 3;
     });
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    
+    // Create indices for all triangles
+    const indices = [];
+    for (let i = 0; i < this.tiles.length; i++) {
+      const baseIndex = i * 3;
+      indices.push(baseIndex, baseIndex + 1, baseIndex + 2);
+    }
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
