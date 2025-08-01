@@ -1,8 +1,8 @@
 import { useGameState } from "../lib/stores/useGameState";
-import { Tile } from "../lib/types/game";
+import { TileData } from "../lib/geometry/GlobeGeometry";
 
 interface TileInfoProps {
-  tile: Tile;
+  tile: TileData;
 }
 
 const TileInfo = ({ tile }: TileInfoProps) => {

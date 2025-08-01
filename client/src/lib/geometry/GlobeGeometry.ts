@@ -24,7 +24,8 @@ export class GlobeGeometry {
   }
 
   private generateGlobe() {
-    // Step 1: Create base icosahedron
+    // Create a simplified geodesic sphere with manageable tile count
+    // Start with icosahedron and subdivide once to get ~1000 tiles
     const phi = (1 + Math.sqrt(5)) / 2; // Golden ratio
     const vertices = [
       [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
@@ -39,74 +40,81 @@ export class GlobeGeometry {
       [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
     ];
 
-    // Step 2: Subdivide each face (frequency = 20 for 4002 vertices)
-    const frequency = 20;
-    const subdividedVertices: THREE.Vector3[] = [];
+    // Simple subdivision to create more tiles
+    const subdividedVertices: THREE.Vector3[] = [...vertices];
     const subdividedFaces: number[][] = [];
+    const edgeMap = new Map<string, number>();
 
-    // Generate subdivided mesh
-    for (const face of faces) {
-      const [a, b, c] = face.map(i => vertices[i]);
-      
-      // Create subdivision grid
-      for (let i = 0; i < frequency; i++) {
-        for (let j = 0; j < frequency - i; j++) {
-          const u1 = i / frequency;
-          const v1 = j / frequency;
-          const w1 = 1 - u1 - v1;
-          
-          const u2 = (i + 1) / frequency;
-          const v2 = j / frequency;
-          const w2 = 1 - u2 - v2;
-          
-          const u3 = i / frequency;
-          const v3 = (j + 1) / frequency;
-          const w3 = 1 - u3 - v3;
-
-          // Calculate barycentric coordinates and project to sphere
-          const p1 = new THREE.Vector3()
-            .addScaledVector(a, w1)
-            .addScaledVector(b, u1)
-            .addScaledVector(c, v1)
-            .normalize();
-          
-          const p2 = new THREE.Vector3()
-            .addScaledVector(a, w2)
-            .addScaledVector(b, u2)
-            .addScaledVector(c, v2)
-            .normalize();
-          
-          const p3 = new THREE.Vector3()
-            .addScaledVector(a, w3)
-            .addScaledVector(b, u3)
-            .addScaledVector(c, v3)
-            .normalize();
-
-          const baseIndex = subdividedVertices.length;
-          subdividedVertices.push(p1, p2, p3);
-          subdividedFaces.push([baseIndex, baseIndex + 1, baseIndex + 2]);
-
-          // Add second triangle if not on edge
-          if (j < frequency - i - 1) {
-            const u4 = (i + 1) / frequency;
-            const v4 = (j + 1) / frequency;
-            const w4 = 1 - u4 - v4;
-
-            const p4 = new THREE.Vector3()
-              .addScaledVector(a, w4)
-              .addScaledVector(b, u4)
-              .addScaledVector(c, v4)
-              .normalize();
-
-            subdividedVertices.push(p4);
-            subdividedFaces.push([baseIndex + 1, baseIndex + 3, baseIndex + 2]);
-          }
-        }
+    // Helper function to get or create midpoint
+    const getMidpoint = (i1: number, i2: number): number => {
+      const key = i1 < i2 ? `${i1}-${i2}` : `${i2}-${i1}`;
+      if (edgeMap.has(key)) {
+        return edgeMap.get(key)!;
       }
+      
+      const v1 = subdividedVertices[i1];
+      const v2 = subdividedVertices[i2];
+      const midpoint = new THREE.Vector3()
+        .addVectors(v1, v2)
+        .normalize();
+      
+      const index = subdividedVertices.length;
+      subdividedVertices.push(midpoint);
+      edgeMap.set(key, index);
+      return index;
+    };
+
+    // Subdivide each face into 4 triangles
+    for (const face of faces) {
+      const [a, b, c] = face;
+      
+      // Get midpoints
+      const ab = getMidpoint(a, b);
+      const bc = getMidpoint(b, c);
+      const ca = getMidpoint(c, a);
+      
+      // Create 4 new faces
+      subdividedFaces.push([a, ab, ca]);
+      subdividedFaces.push([b, bc, ab]);
+      subdividedFaces.push([c, ca, bc]);
+      subdividedFaces.push([ab, bc, ca]);
     }
 
-    // Step 3: Create dual polyhedron (hex-pent tiles)
-    this.createDualPolyhedron(subdividedVertices, subdividedFaces);
+    // Create tiles directly from the subdivided mesh
+    this.createTilesFromMesh(subdividedVertices, subdividedFaces);
+  }
+
+  private createTilesFromMesh(vertices: THREE.Vector3[], faces: number[][]) {
+    // Create tiles directly from triangular faces - each face becomes a tile
+    let tileId = 0;
+    
+    faces.forEach(face => {
+      const [a, b, c] = face.map(i => vertices[i]);
+      const tileVertices = [a, b, c];
+      
+      // Calculate tile center
+      const center = new THREE.Vector3();
+      tileVertices.forEach(v => center.add(v));
+      center.divideScalar(tileVertices.length).normalize();
+      
+      // Convert to lat/lon
+      const lat = Math.asin(center.y) * 180 / Math.PI;
+      const lon = Math.atan2(center.z, center.x) * 180 / Math.PI;
+      
+      this.tiles.push({
+        id: tileId++,
+        type: 'hexagon', // Simplified - all triangular tiles
+        vertices: tileVertices,
+        center,
+        lat,
+        lon,
+        startVertex: 0, // Will be set during mesh creation
+        startFace: 0,   // Will be set during mesh creation
+        faceCount: 1    // Each tile is one triangle
+      });
+    });
+    
+    console.log(`Generated ${this.tiles.length} tiles`);
   }
 
   private createDualPolyhedron(vertices: THREE.Vector3[], faces: number[][]) {
@@ -194,25 +202,18 @@ export class GlobeGeometry {
     const indices: number[] = [];
     let vertexIndex = 0;
 
-    this.tiles.forEach(tile => {
+    this.tiles.forEach((tile, tileIndex) => {
       tile.startVertex = vertexIndex;
+      tile.startFace = tileIndex;
       
-      // Add tile vertices
+      // Add tile vertices (each tile is a triangle)
       tile.vertices.forEach(vertex => {
         positions.push(vertex.x, vertex.y, vertex.z);
-        vertexIndex++;
       });
 
-      // Triangulate tile (fan triangulation from center)
-      tile.startFace = indices.length / 3;
-      for (let i = 1; i < tile.vertices.length - 1; i++) {
-        indices.push(
-          tile.startVertex,
-          tile.startVertex + i,
-          tile.startVertex + i + 1
-        );
-      }
-      tile.faceCount = tile.vertices.length - 2;
+      // Each tile is one triangle
+      indices.push(vertexIndex, vertexIndex + 1, vertexIndex + 2);
+      vertexIndex += 3;
     });
 
     const geometry = new THREE.BufferGeometry();

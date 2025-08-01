@@ -32,7 +32,7 @@ const Globe = () => {
     
     tileData.forEach((tile, index) => {
       const gameStateTile = tiles.get(tile.id);
-      let color = new THREE.Color(0x404040); // Default gray
+      let color = new THREE.Color(0x2a4a3a); // Default dark green
       
       if (gameStateTile?.ownerId) {
         const owner = players.get(gameStateTile.ownerId);
@@ -41,10 +41,9 @@ const Globe = () => {
         }
       }
       
-      // Each tile has multiple vertices, color them all the same
-      const vertexCount = tile.vertices.length;
-      for (let i = 0; i < vertexCount; i++) {
-        const vertexIndex = tile.startVertex + i;
+      // Each tile has 3 vertices (triangle), color them all the same
+      for (let i = 0; i < 3; i++) {
+        const vertexIndex = index * 3 + i;
         colors[vertexIndex * 3] = color.r;
         colors[vertexIndex * 3 + 1] = color.g;
         colors[vertexIndex * 3 + 2] = color.b;
@@ -73,11 +72,9 @@ const Globe = () => {
       const intersect = intersects[0];
       const faceIndex = intersect.faceIndex;
       
-      if (faceIndex !== undefined) {
-        // Find which tile this face belongs to
-        const tile = tileData.find(t => 
-          faceIndex >= t.startFace && faceIndex < t.startFace + t.faceCount
-        );
+      if (faceIndex !== undefined && faceIndex !== null) {
+        // Each face corresponds directly to a tile (simplified geometry)
+        const tile = tileData[faceIndex];
         
         if (tile && tile.id !== hoveredTile?.id) {
           setHoveredTile(tile);
