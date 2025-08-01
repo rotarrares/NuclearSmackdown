@@ -24,8 +24,7 @@ export class GlobeGeometry {
   }
 
   private generateGlobe() {
-    // Create a simplified geodesic sphere with manageable tile count
-    // Start with icosahedron and subdivide once to get ~1000 tiles
+    // Step 1: Create base icosahedron
     const phi = (1 + Math.sqrt(5)) / 2; // Golden ratio
     const vertices = [
       [-1, phi, 0], [1, phi, 0], [-1, -phi, 0], [1, -phi, 0],
@@ -40,81 +39,69 @@ export class GlobeGeometry {
       [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
     ];
 
-    // Simple subdivision to create more tiles
-    const subdividedVertices: THREE.Vector3[] = [...vertices];
+    // Step 2: Subdivide to create geodesic polyhedron (frequency = 20 for 4002 vertices)
+    const frequency = 20;
+    const subdividedVertices: THREE.Vector3[] = [];
     const subdividedFaces: number[][] = [];
-    const edgeMap = new Map<string, number>();
+    const vertexMap = new Map<string, number>(); // To avoid duplicate vertices
 
-    // Helper function to get or create midpoint
-    const getMidpoint = (i1: number, i2: number): number => {
-      const key = i1 < i2 ? `${i1}-${i2}` : `${i2}-${i1}`;
-      if (edgeMap.has(key)) {
-        return edgeMap.get(key)!;
-      }
-      
-      const v1 = subdividedVertices[i1];
-      const v2 = subdividedVertices[i2];
-      const midpoint = new THREE.Vector3()
-        .addVectors(v1, v2)
-        .normalize();
-      
-      const index = subdividedVertices.length;
-      subdividedVertices.push(midpoint);
-      edgeMap.set(key, index);
-      return index;
-    };
-
-    // Subdivide each face into 4 triangles
+    // Generate subdivided mesh using barycentric coordinates
     for (const face of faces) {
-      const [a, b, c] = face;
+      const [a, b, c] = face.map(i => vertices[i]);
       
-      // Get midpoints
-      const ab = getMidpoint(a, b);
-      const bc = getMidpoint(b, c);
-      const ca = getMidpoint(c, a);
+      // Create subdivision points for this face
+      const faceVertices: THREE.Vector3[] = [];
+      const faceIndices: number[] = [];
       
-      // Create 4 new faces
-      subdividedFaces.push([a, ab, ca]);
-      subdividedFaces.push([b, bc, ab]);
-      subdividedFaces.push([c, ca, bc]);
-      subdividedFaces.push([ab, bc, ca]);
+      for (let i = 0; i <= frequency; i++) {
+        for (let j = 0; j <= frequency - i; j++) {
+          const u = i / frequency;
+          const v = j / frequency;
+          const w = 1 - u - v;
+
+          const point = new THREE.Vector3()
+            .addScaledVector(a, w)
+            .addScaledVector(b, u)
+            .addScaledVector(c, v)
+            .normalize();
+
+          // Use vertex map to avoid duplicates
+          const key = `${point.x.toFixed(8)},${point.y.toFixed(8)},${point.z.toFixed(8)}`;
+          if (!vertexMap.has(key)) {
+            vertexMap.set(key, subdividedVertices.length);
+            subdividedVertices.push(point);
+          }
+          faceIndices.push(vertexMap.get(key)!);
+        }
+      }
+
+      // Create triangular faces from the grid
+      let idx = 0;
+      for (let i = 0; i < frequency; i++) {
+        for (let j = 0; j < frequency - i; j++) {
+          const rowLength = frequency - i + 1;
+          const nextRowLength = frequency - i;
+          
+          const p1 = faceIndices[idx];
+          const p2 = faceIndices[idx + 1];
+          const p3 = faceIndices[idx + rowLength];
+          
+          subdividedFaces.push([p1, p2, p3]);
+          
+          // Add second triangle if not on edge
+          if (j < frequency - i - 1) {
+            const p4 = faceIndices[idx + rowLength + 1];
+            subdividedFaces.push([p2, p4, p3]);
+          }
+          
+          idx++;
+        }
+        idx++; // Skip the last vertex of each row
+      }
     }
 
-    // Create tiles directly from the subdivided mesh
-    this.createTilesFromMesh(subdividedVertices, subdividedFaces);
-  }
-
-  private createTilesFromMesh(vertices: THREE.Vector3[], faces: number[][]) {
-    // Create tiles directly from triangular faces - each face becomes a tile
-    let tileId = 0;
-    
-    faces.forEach(face => {
-      const [a, b, c] = face.map(i => vertices[i]);
-      const tileVertices = [a, b, c];
-      
-      // Calculate tile center
-      const center = new THREE.Vector3();
-      tileVertices.forEach(v => center.add(v));
-      center.divideScalar(tileVertices.length).normalize();
-      
-      // Convert to lat/lon
-      const lat = Math.asin(center.y) * 180 / Math.PI;
-      const lon = Math.atan2(center.z, center.x) * 180 / Math.PI;
-      
-      this.tiles.push({
-        id: tileId++,
-        type: 'hexagon', // Simplified - all triangular tiles
-        vertices: tileVertices,
-        center,
-        lat,
-        lon,
-        startVertex: 0, // Will be set during mesh creation
-        startFace: 0,   // Will be set during mesh creation
-        faceCount: 1    // Each tile is one triangle
-      });
-    });
-    
-    console.log(`Generated ${this.tiles.length} tiles`);
+    // Step 3: Create dual polyhedron (hex-pent tiles)
+    this.createDualPolyhedron(subdividedVertices, subdividedFaces);
   }
 
   private createDualPolyhedron(vertices: THREE.Vector3[], faces: number[][]) {
@@ -139,6 +126,8 @@ export class GlobeGeometry {
     // Create tiles from vertex adjacencies
     let tileId = 0;
     vertexToFaces.forEach((adjacentFaces, vertexIndex) => {
+      if (adjacentFaces.length < 3) return; // Skip invalid vertices
+      
       const tileVertices: THREE.Vector3[] = [];
       
       // Sort adjacent faces by angle around the vertex
@@ -199,33 +188,32 @@ export class GlobeGeometry {
 
   private createMeshGeometry(): THREE.BufferGeometry {
     const positions: number[] = [];
-    const colors: number[] = [];
+    const indices: number[] = [];
     let vertexIndex = 0;
 
     this.tiles.forEach((tile, tileIndex) => {
       tile.startVertex = vertexIndex;
-      tile.startFace = tileIndex;
+      tile.startFace = indices.length / 3;
       
-      // Add tile vertices (each tile is a triangle)
+      // Add tile vertices
       tile.vertices.forEach(vertex => {
         positions.push(vertex.x, vertex.y, vertex.z);
-        // Default color - will be updated by component
-        colors.push(0.2, 0.6, 0.3); // Green
+        vertexIndex++;
       });
 
-      vertexIndex += 3;
+      // Triangulate tile (fan triangulation from first vertex)
+      for (let i = 1; i < tile.vertices.length - 1; i++) {
+        indices.push(
+          tile.startVertex,
+          tile.startVertex + i,
+          tile.startVertex + i + 1
+        );
+      }
+      tile.faceCount = tile.vertices.length - 2;
     });
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    
-    // Create indices for all triangles
-    const indices = [];
-    for (let i = 0; i < this.tiles.length; i++) {
-      const baseIndex = i * 3;
-      indices.push(baseIndex, baseIndex + 1, baseIndex + 2);
-    }
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
