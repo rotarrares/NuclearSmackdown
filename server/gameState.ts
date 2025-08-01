@@ -1,9 +1,10 @@
-import { Player, GameTile } from '../client/src/lib/types/game';
+import { Player, GameTile } from '../shared/schema';
 import { GlobeGeometry, TileData } from '../client/src/lib/geometry/GlobeGeometry';
 
 interface ActionResult {
   success: boolean;
   error?: string;
+  data?: any;
 }
 
 export class GameState {
@@ -36,6 +37,7 @@ export class GameState {
         id: tileData.id,
         hasCity: false,
         hasPort: false,
+        hasMissileSilo: false,
         population: 0,
         terrainType: tileData.terrainType
       };
@@ -97,8 +99,6 @@ export class GameState {
       gold: 1000,
       population: 100,
       workerRatio: 0.5,
-      spawnTileId,
-      joinedAt: Date.now(),
       lastActive: Date.now()
     };
     
@@ -156,13 +156,21 @@ export class GameState {
       return { success: false, error: 'Tile not found' };
     }
     
-    // Check if tile is already owned
-    if (tile.ownerId) {
-      if (tile.ownerId === playerId) {
-        return { success: false, error: 'Already own this tile' };
-      } else {
-        return { success: false, error: 'Tile owned by another player' };
-      }
+    // If tile is already owned by this player, return building options
+    if (tile.ownerId === playerId) {
+      return { 
+        success: true, 
+        data: { 
+          type: 'building_options',
+          tileId: tileId,
+          canBuildPort: this.isAdjacentToWater(tileId)
+        }
+      };
+    }
+    
+    // If tile is owned by another player
+    if (tile.ownerId && tile.ownerId !== playerId) {
+      return { success: false, error: 'Tile owned by another player' };
     }
     
     // Cannot claim water tiles
@@ -170,23 +178,25 @@ export class GameState {
       return { success: false, error: 'Cannot claim water tiles' };
     }
     
-    // Check if player can afford expansion
-    const expansionCost = this.getExpansionCost(playerId, tileId);
-    if (player.gold < expansionCost) {
-      return { success: false, error: `Need ${expansionCost} gold` };
-    }
-    
     // Check adjacency (player must own an adjacent tile)
     if (!this.isAdjacentToPlayerTerritory(playerId, tileId)) {
       return { success: false, error: 'Must expand from owned territory' };
     }
     
-    // Perform expansion
-    player.gold -= expansionCost;
+    // Check if player has enough soldiers for expansion
+    const soldiers = Math.floor(player.population * player.workerRatio);
+    const requiredSoldiers = 10; // Base soldier cost for expansion
+    
+    if (soldiers < requiredSoldiers) {
+      return { success: false, error: `Need ${requiredSoldiers} soldiers` };
+    }
+    
+    // Perform expansion using soldiers
+    player.population -= requiredSoldiers; // Use soldiers for expansion
     player.lastActive = Date.now();
     
     tile.ownerId = playerId;
-    tile.population = 10; // Base population when claiming
+    tile.population = requiredSoldiers; // Soldiers become population on new tile
     
     return { success: true };
   }
@@ -208,17 +218,65 @@ export class GameState {
     return { success: true };
   }
 
-  private getExpansionCost(playerId: string, tileId: number): number {
-    // Base cost
-    let cost = 100;
+  private isAdjacentToWater(tileId: number): boolean {
+    const adjacentTileIds = this.adjacencyMap.get(tileId) || [];
     
-    // Increase cost based on how much territory player already owns
-    const ownedTiles = Array.from(this.tiles.values())
-      .filter(tile => tile.ownerId === playerId).length;
+    return adjacentTileIds.some(adjTileId => {
+      const adjTile = this.tiles.get(adjTileId);
+      return adjTile && adjTile.terrainType === 'water';
+    });
+  }
+
+  buildStructure(playerId: string, tileId: number, structureType: 'city' | 'port' | 'missile_silo'): ActionResult {
+    const player = this.players.get(playerId);
+    const tile = this.tiles.get(tileId);
     
-    cost += ownedTiles * 10; // Each additional tile costs 10 more gold
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
     
-    return cost;
+    if (!tile) {
+      return { success: false, error: 'Tile not found' };
+    }
+    
+    // Check if player owns this tile
+    if (tile.ownerId !== playerId) {
+      return { success: false, error: 'You do not own this tile' };
+    }
+    
+    // Check if player has enough gold
+    const buildingCost = 100;
+    if (player.gold < buildingCost) {
+      return { success: false, error: `Need ${buildingCost} gold` };
+    }
+    
+    // Check structure-specific requirements
+    if (structureType === 'port' && !this.isAdjacentToWater(tileId)) {
+      return { success: false, error: 'Port must be adjacent to water' };
+    }
+    
+    // Check if tile already has a structure
+    if (tile.hasCity || tile.hasPort || tile.hasMissileSilo) {
+      return { success: false, error: 'Tile already has a structure' };
+    }
+    
+    // Build the structure
+    player.gold -= buildingCost;
+    player.lastActive = Date.now();
+    
+    switch (structureType) {
+      case 'city':
+        tile.hasCity = true;
+        break;
+      case 'port':
+        tile.hasPort = true;
+        break;
+      case 'missile_silo':
+        tile.hasMissileSilo = true;
+        break;
+    }
+    
+    return { success: true };
   }
 
   private isAdjacentToPlayerTerritory(playerId: string, tileId: number): boolean {

@@ -99,6 +99,10 @@ export class GameServer {
         this.handleExpandTerritory(ws, message.data);
         break;
         
+      case 'build_structure':
+        this.handleBuildStructure(ws, message.data);
+        break;
+        
       case 'adjust_worker_ratio':
         this.handleAdjustWorkerRatio(ws, message.data);
         break;
@@ -145,16 +149,56 @@ export class GameServer {
     const result = this.gameState.selectTile(connection.playerId, data.tileId);
     
     if (result.success) {
-      // Broadcast tile update
+      if (result.data?.type === 'building_options') {
+        // Send building options back to client
+        this.sendToClient(ws, {
+          type: 'building_options',
+          data: result.data
+        });
+      } else {
+        // Territory expansion successful
+        this.broadcast({
+          type: 'territory_expanded',
+          data: {
+            tileId: data.tileId,
+            playerId: connection.playerId
+          }
+        });
+        
+        // Update player stats
+        this.broadcast({
+          type: 'player_updated',
+          data: {
+            player: this.gameState.getPlayer(connection.playerId)
+          }
+        });
+      }
+    } else {
+      this.sendError(ws, result.error || 'Cannot select tile');
+    }
+  }
+
+  private handleBuildStructure(ws: WebSocket, data: { tileId: number, structureType: 'city' | 'port' | 'missile_silo' }) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, 'Player not spawned');
+      return;
+    }
+    
+    const result = this.gameState.buildStructure(connection.playerId, data.tileId, data.structureType);
+    
+    if (result.success) {
+      // Broadcast structure built
       this.broadcast({
-        type: 'territory_expanded',
+        type: 'structure_built',
         data: {
           tileId: data.tileId,
-          playerId: connection.playerId
+          playerId: connection.playerId,
+          structureType: data.structureType
         }
       });
       
-      // Update player gold
+      // Update player stats
       this.broadcast({
         type: 'player_updated',
         data: {
@@ -162,7 +206,7 @@ export class GameServer {
         }
       });
     } else {
-      this.sendError(ws, result.error || 'Cannot select tile');
+      this.sendError(ws, result.error || 'Cannot build structure');
     }
   }
 

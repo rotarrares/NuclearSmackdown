@@ -14,6 +14,7 @@ interface MultiplayerState {
   selectTile: (tileId: number) => void;
   expandTerritory: (tileId: number) => void;
   adjustWorkerRatio: (ratio: number) => void;
+  buildStructure: (tileId: number, structureType: 'city' | 'port' | 'missile_silo') => void;
   
   // Message handlers
   handleMessage: (event: MessageEvent) => void;
@@ -134,6 +135,16 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
     socket.send(JSON.stringify({
       type: 'adjust_worker_ratio',
       data: { ratio }
+    }));
+  },
+
+  buildStructure: (tileId: number, structureType: 'city' | 'port' | 'missile_silo') => {
+    const { socket } = get();
+    if (!socket) return;
+    
+    socket.send(JSON.stringify({
+      type: 'build_structure',
+      data: { tileId, structureType }
     }));
   },
   

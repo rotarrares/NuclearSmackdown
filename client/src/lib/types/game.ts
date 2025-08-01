@@ -25,6 +25,7 @@ export interface GameTile {
   // Structures
   hasCity: boolean;
   hasPort: boolean;
+  hasMissileSilo?: boolean;
   
   // Population on this tile
   population: number;
