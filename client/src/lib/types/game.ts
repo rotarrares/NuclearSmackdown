@@ -23,9 +23,7 @@ export interface GameTile {
   ownerId?: string;
   
   // Structures
-  hasCity: boolean;
-  hasPort: boolean;
-  hasMissileSilo?: boolean;
+  structureType?: 'city' | 'port' | 'missile_silo';
   
   // Population on this tile
   population: number;

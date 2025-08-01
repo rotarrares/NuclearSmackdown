@@ -30,9 +30,7 @@ export interface Player {
 export interface GameTile {
   id: number;
   ownerId?: string;
-  hasCity: boolean;
-  hasPort: boolean;
-  hasMissileSilo?: boolean;
+  structureType?: 'city' | 'port' | 'missile_silo';
   population: number;
   terrainType: 'water' | 'grass' | 'desert' | 'mountain';
 }

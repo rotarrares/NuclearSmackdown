@@ -187,14 +187,12 @@ export class GameServer {
     
     const result = this.gameState.buildStructure(connection.playerId, data.tileId, data.structureType);
     
-    if (result.success) {
-      // Broadcast structure built
+    if (result.success && result.data?.tile) {
+      // Broadcast structure built with full tile data
       this.broadcast({
         type: 'structure_built',
         data: {
-          tileId: data.tileId,
-          playerId: connection.playerId,
-          structureType: data.structureType
+          tile: result.data.tile
         }
       });
       

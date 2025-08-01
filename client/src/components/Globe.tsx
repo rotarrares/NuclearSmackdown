@@ -172,6 +172,40 @@ const Globe = () => {
           />
         </mesh>
       )}
+
+      {/* Building indicators */}
+      {tileData.map((tile) => {
+        const gameStateTile = tiles.get(tile.id);
+        if (!gameStateTile?.structureType) return null;
+        
+        let buildingColor = 0xffffff;
+        let buildingSize = 0.008;
+        
+        switch (gameStateTile.structureType) {
+          case 'city':
+            buildingColor = 0xffd700; // Gold
+            buildingSize = 0.012;
+            break;
+          case 'port':
+            buildingColor = 0x0088ff; // Blue
+            buildingSize = 0.010;
+            break;
+          case 'missile_silo':
+            buildingColor = 0xff4444; // Red
+            buildingSize = 0.008;
+            break;
+        }
+        
+        return (
+          <mesh key={`building-${tile.id}`} position={tile.center}>
+            <boxGeometry args={[buildingSize, buildingSize * 2, buildingSize]} />
+            <meshBasicMaterial 
+              color={buildingColor}
+              transparent={false}
+            />
+          </mesh>
+        );
+      })}
       
 
     </group>

@@ -35,9 +35,7 @@ export class GameState {
     this.tileData.forEach(tileData => {
       const tile: GameTile = {
         id: tileData.id,
-        hasCity: false,
-        hasPort: false,
-        hasMissileSilo: false,
+
         population: 0,
         terrainType: tileData.terrainType
       };
@@ -256,27 +254,16 @@ export class GameState {
     }
     
     // Check if tile already has a structure
-    if (tile.hasCity || tile.hasPort || tile.hasMissileSilo) {
+    if (tile.structureType) {
       return { success: false, error: 'Tile already has a structure' };
     }
     
     // Build the structure
     player.gold -= buildingCost;
     player.lastActive = Date.now();
+    tile.structureType = structureType;
     
-    switch (structureType) {
-      case 'city':
-        tile.hasCity = true;
-        break;
-      case 'port':
-        tile.hasPort = true;
-        break;
-      case 'missile_silo':
-        tile.hasMissileSilo = true;
-        break;
-    }
-    
-    return { success: true };
+    return { success: true, data: { tile } };
   }
 
   private isAdjacentToPlayerTerritory(playerId: string, tileId: number): boolean {

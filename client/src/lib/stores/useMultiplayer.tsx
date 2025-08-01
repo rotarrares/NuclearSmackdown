@@ -188,6 +188,12 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
           gameState.updateTile(tileId, { ownerId: playerId });
           break;
           
+        case 'structure_built':
+          const builtTile: GameTile = message.data.tile;
+          gameState.updateTile(builtTile.id, builtTile);
+          console.log(`Built ${builtTile.structureType} on tile ${builtTile.id}`);
+          break;
+          
         case 'error':
           console.error('Game error:', message.data.message);
           break;
