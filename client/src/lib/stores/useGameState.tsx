@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { Player, GameTile, GamePhase } from "../types/game";
+import { Missile } from "../../shared/schema";
 import { TileData } from "../geometry/GlobeGeometry";
 
 interface GameState {
@@ -13,6 +14,7 @@ interface GameState {
   
   // World state
   tiles: Map<number, GameTile>;
+  missiles: Map<string, Missile>;
   hoveredTile: TileData | null;
   
   // UI state
@@ -32,6 +34,8 @@ interface GameState {
   addPlayer: (player: Player) => void;
   removePlayer: (playerId: string) => void;
   updateTile: (tileId: number, updates: Partial<GameTile>) => void;
+  addMissile: (missile: Missile) => void;
+  removeMissile: (missileId: string) => void;
   setHoveredTile: (tile: TileData | null) => void;
   setBuildingOptions: (options: { tileId: number; canBuildPort: boolean; position: { x: number; y: number }; } | null) => void;
   updateGameTime: (time: number) => void;
@@ -50,6 +54,7 @@ export const useGameState = create<GameState>()(
     players: new Map(),
     currentPlayer: null,
     tiles: new Map(),
+    missiles: new Map(),
     hoveredTile: null,
     buildingOptions: null,
     gameTime: 0,
@@ -108,6 +113,18 @@ export const useGameState = create<GameState>()(
       }
       
       return { tiles: newTiles };
+    }),
+    
+    addMissile: (missile) => set((state) => {
+      const newMissiles = new Map(state.missiles);
+      newMissiles.set(missile.id, missile);
+      return { missiles: newMissiles };
+    }),
+    
+    removeMissile: (missileId) => set((state) => {
+      const newMissiles = new Map(state.missiles);
+      newMissiles.delete(missileId);
+      return { missiles: newMissiles };
     }),
     
     setHoveredTile: (tile) => set({ hoveredTile: tile }),

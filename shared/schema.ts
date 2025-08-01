@@ -36,6 +36,16 @@ export interface GameTile {
 }
 
 export interface GameMessage {
-  type: 'spawn_player' | 'select_tile' | 'expand_territory' | 'adjust_worker_ratio' | 'build_structure';
+  type: 'spawn_player' | 'select_tile' | 'expand_territory' | 'adjust_worker_ratio' | 'build_structure' | 'launch_missile';
   data: any;
+}
+
+export interface Missile {
+  id: string;
+  fromTileId: number;
+  toTileId: number;
+  playerId: string;
+  launchTime: number;
+  travelTime: number; // milliseconds for missile to reach target
+  trajectory: [number, number, number][]; // 3D points along the path
 }

@@ -1,4 +1,4 @@
-import { Player, GameTile } from '../shared/schema';
+import { Player, GameTile, Missile } from '../shared/schema';
 import { GlobeGeometry, TileData } from '../client/src/lib/geometry/GlobeGeometry';
 
 interface ActionResult {
@@ -10,6 +10,7 @@ interface ActionResult {
 export class GameState {
   private players: Map<string, Player> = new Map();
   private tiles: Map<number, GameTile> = new Map();
+  private missiles: Map<string, Missile> = new Map();
   private gameStartTime: number;
   private lastUpdate: number;
   private lastExpansionTime: number;
@@ -382,7 +383,124 @@ export class GameState {
     return this.tiles.get(tileId);
   }
 
+  getMissiles(): Map<string, Missile> {
+    return this.missiles;
+  }
+
   getGameTime(): number {
     return Date.now() - this.gameStartTime;
+  }
+
+  launchMissile(playerId: string, fromTileId: number, toTileId: number): ActionResult {
+    const player = this.players.get(playerId);
+    const fromTile = this.tiles.get(fromTileId);
+    const toTile = this.tiles.get(toTileId);
+    
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+    
+    if (!fromTile || !toTile) {
+      return { success: false, error: 'Tile not found' };
+    }
+    
+    // Check if player owns the launching tile and it has a missile silo
+    if (fromTile.ownerId !== playerId || fromTile.structureType !== 'missile_silo') {
+      return { success: false, error: 'No missile silo at launch location' };
+    }
+    
+    // Generate missile trajectory along sphere surface
+    const fromTileData = this.tileData.find(t => t.id === fromTileId);
+    const toTileData = this.tileData.find(t => t.id === toTileId);
+    
+    if (!fromTileData || !toTileData) {
+      return { success: false, error: 'Tile data not found' };
+    }
+    
+    const trajectory = this.calculateSphericalTrajectory(fromTileData.center, toTileData.center);
+    const travelTime = 3000; // 3 seconds travel time
+    
+    const missile: Missile = {
+      id: `missile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fromTileId,
+      toTileId,
+      playerId,
+      launchTime: Date.now(),
+      travelTime,
+      trajectory
+    };
+    
+    this.missiles.set(missile.id, missile);
+    
+    return { success: true, data: { missile } };
+  }
+
+  impactMissile(missileId: string): ActionResult {
+    const missile = this.missiles.get(missileId);
+    
+    if (!missile) {
+      return { success: false, error: 'Missile not found' };
+    }
+    
+    const targetTile = this.tiles.get(missile.toTileId);
+    if (!targetTile) {
+      return { success: false, error: 'Target tile not found' };
+    }
+    
+    // Destroy any structure on the target tile
+    if (targetTile.structureType) {
+      targetTile.structureType = undefined;
+    }
+    
+    // Reduce population by 50%
+    targetTile.population = Math.floor(targetTile.population * 0.5);
+    
+    // Remove missile
+    this.missiles.delete(missileId);
+    
+    return { success: true, data: { tile: targetTile } };
+  }
+
+  private calculateSphericalTrajectory(from: [number, number, number], to: [number, number, number]): [number, number, number][] {
+    const trajectory: [number, number, number][] = [];
+    const steps = 20; // Number of points along the trajectory
+    
+    // Convert to unit vectors
+    const fromVec = [from[0], from[1], from[2]];
+    const toVec = [to[0], to[1], to[2]];
+    
+    // Calculate the great circle path on the sphere
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      
+      // Spherical linear interpolation (slerp)
+      const dot = fromVec[0] * toVec[0] + fromVec[1] * toVec[1] + fromVec[2] * toVec[2];
+      const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+      
+      if (angle < 0.001) {
+        // Vectors are very close, use linear interpolation
+        trajectory.push([
+          fromVec[0] + t * (toVec[0] - fromVec[0]),
+          fromVec[1] + t * (toVec[1] - fromVec[1]),
+          fromVec[2] + t * (toVec[2] - fromVec[2])
+        ]);
+      } else {
+        const sinAngle = Math.sin(angle);
+        const a = Math.sin((1 - t) * angle) / sinAngle;
+        const b = Math.sin(t * angle) / sinAngle;
+        
+        // Add height for ballistic trajectory
+        const height = Math.sin(t * Math.PI) * 0.3; // Peak at middle of trajectory
+        const radius = 1.0 + height; // Base radius plus height
+        
+        const x = (a * fromVec[0] + b * toVec[0]) * radius;
+        const y = (a * fromVec[1] + b * toVec[1]) * radius;
+        const z = (a * fromVec[2] + b * toVec[2]) * radius;
+        
+        trajectory.push([x, y, z]);
+      }
+    }
+    
+    return trajectory;
   }
 }

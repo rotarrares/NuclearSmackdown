@@ -11,8 +11,8 @@ const Globe = () => {
   const borderRef = useRef<THREE.LineSegments>(null);
   const { camera, raycaster, pointer } = useThree();
   
-  const { tiles, players, currentPlayer, hoveredTile, setHoveredTile } = useGameState();
-  const { selectTile, buildStructure } = useMultiplayer();
+  const { tiles, players, currentPlayer, missiles, hoveredTile, setHoveredTile } = useGameState();
+  const { selectTile, buildStructure, launchMissile } = useMultiplayer();
   
   const [isHovering, setIsHovering] = useState(false);
 
@@ -113,6 +113,20 @@ const Globe = () => {
     if (hoveredTile && currentPlayer) {
       const gameStateTile = tiles.get(hoveredTile.id);
       
+      // Find missile silos owned by current player
+      const missileSilos = Array.from(tiles.values()).filter(tile => 
+        tile.ownerId === currentPlayer.id && tile.structureType === 'missile_silo'
+      );
+      
+      // If there are missile silos and clicking on enemy/neutral tile, launch missile
+      if (missileSilos.length > 0 && (!gameStateTile?.ownerId || gameStateTile.ownerId !== currentPlayer.id)) {
+        // Use the first available missile silo
+        const silo = missileSilos[0];
+        launchMissile(silo.id, hoveredTile.id);
+        console.log(`Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}`);
+        return;
+      }
+      
       // If tile is unowned or we want to expand, try to claim it
       if (!gameStateTile?.ownerId) {
         selectTile(hoveredTile.id);
@@ -127,7 +141,7 @@ const Globe = () => {
         console.log("Clicked enemy tile:", hoveredTile.id);
       }
     }
-  }, [hoveredTile, currentPlayer, tiles, selectTile]);
+  }, [hoveredTile, currentPlayer, tiles, selectTile, launchMissile]);
 
   return (
     <group>
@@ -202,6 +216,26 @@ const Globe = () => {
             <meshBasicMaterial 
               color={buildingColor}
               transparent={false}
+            />
+          </mesh>
+        );
+      })}
+
+      {/* Missile trajectories */}
+      {Array.from(missiles.values()).map((missile) => {
+        if (!missile.trajectory || missile.trajectory.length === 0) return null;
+        
+        const points = missile.trajectory.map((point: [number, number, number]) => new THREE.Vector3(...point));
+        const curve = new THREE.CatmullRomCurve3(points);
+        const tubeGeometry = new THREE.TubeGeometry(curve, 64, 0.002, 8, false);
+        
+        return (
+          <mesh key={`missile-${missile.id}`}>
+            <primitive object={tubeGeometry} />
+            <meshBasicMaterial 
+              color={0xffffff}
+              transparent={true}
+              opacity={0.8}
             />
           </mesh>
         );

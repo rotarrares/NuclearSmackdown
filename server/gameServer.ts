@@ -107,6 +107,10 @@ export class GameServer {
         this.handleAdjustWorkerRatio(ws, message.data);
         break;
         
+      case 'launch_missile':
+        this.handleLaunchMissile(ws, message.data);
+        break;
+        
       default:
         this.sendError(ws, `Unknown message type: ${message.type}`);
     }
@@ -234,6 +238,45 @@ export class GameServer {
     }
   }
 
+  private handleLaunchMissile(ws: WebSocket, data: { fromTileId: number, toTileId: number }) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, 'Player not spawned');
+      return;
+    }
+    
+    const result = this.gameState.launchMissile(connection.playerId, data.fromTileId, data.toTileId);
+    
+    if (result.success && result.data?.missile) {
+      // Broadcast missile launch to all clients
+      this.broadcast({
+        type: 'missile_launched',
+        data: {
+          missile: result.data.missile
+        }
+      });
+      
+      // Schedule missile impact
+      setTimeout(() => {
+        const impactResult = this.gameState.impactMissile(result.data.missile.id);
+        if (impactResult.success) {
+          this.broadcast({
+            type: 'missile_impact',
+            data: {
+              missileId: result.data.missile.id,
+              tileId: data.toTileId,
+              tile: impactResult.data?.tile
+            }
+          });
+        }
+      }, result.data.missile.travelTime);
+      
+      console.log(`Missile launched from ${data.fromTileId} to ${data.toTileId}`);
+    } else {
+      this.sendError(ws, result.error || 'Cannot launch missile');
+    }
+  }
+
   private update() {
     // Update game state
     this.gameState.update();
@@ -245,6 +288,7 @@ export class GameServer {
         data: {
           players: Array.from(this.gameState.getPlayers().values()),
           tiles: Array.from(this.gameState.getTiles().values()),
+          missiles: Array.from(this.gameState.getMissiles().values()),
           gameTime: this.gameState.getGameTime()
         }
       });

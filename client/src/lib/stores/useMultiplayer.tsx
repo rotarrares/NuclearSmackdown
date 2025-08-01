@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useGameState } from "./useGameState";
 import { Player, GameTile } from "../types/game";
+import { Missile } from "../../shared/schema";
 
 interface MultiplayerState {
   socket: WebSocket | null;
@@ -15,6 +16,7 @@ interface MultiplayerState {
   expandTerritory: (tileId: number) => void;
   adjustWorkerRatio: (ratio: number) => void;
   buildStructure: (tileId: number, structureType: 'city' | 'port' | 'missile_silo') => void;
+  launchMissile: (fromTileId: number, toTileId: number) => void;
   
   // Message handlers
   handleMessage: (event: MessageEvent) => void;
@@ -147,6 +149,26 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
       data: { tileId, structureType }
     }));
   },
+
+  launchMissile: (fromTileId: number, toTileId: number) => {
+    const { socket } = get();
+    if (!socket) return;
+    
+    socket.send(JSON.stringify({
+      type: 'launch_missile',
+      data: { fromTileId, toTileId }
+    }));
+  },
+
+  launchMissile: (fromTileId: number, toTileId: number) => {
+    const { socket } = get();
+    if (!socket) return;
+    
+    socket.send(JSON.stringify({
+      type: 'launch_missile',
+      data: { fromTileId, toTileId }
+    }));
+  },
   
   handleMessage: (event: MessageEvent) => {
     try {
@@ -192,6 +214,22 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
           const builtTile: GameTile = message.data.tile;
           gameState.updateTile(builtTile.id, builtTile);
           console.log(`Built ${builtTile.structureType} on tile ${builtTile.id}`);
+          break;
+          
+        case 'missile_launched':
+          const missile: Missile = message.data.missile;
+          gameState.addMissile(missile);
+          console.log(`Missile launched from ${missile.fromTileId} to ${missile.toTileId}`);
+          break;
+          
+        case 'missile_impact':
+          const impactData = message.data;
+          gameState.removeMissile(impactData.missileId);
+          // Update any destroyed structures/population
+          if (impactData.tile) {
+            gameState.updateTile(impactData.tile.id, impactData.tile);
+          }
+          console.log(`Missile ${impactData.missileId} impacted at tile ${impactData.tileId}`);
           break;
           
         case 'error':
