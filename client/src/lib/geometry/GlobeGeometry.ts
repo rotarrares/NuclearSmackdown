@@ -175,29 +175,25 @@ export class GlobeGeometry {
   }
 
   private generateTerrainType(lat: number, lon: number, center: THREE.Vector3): 'water' | 'grass' | 'desert' | 'mountain' {
-    // Create noise-based terrain generation
-    const noise1 = this.noise(center.x * 3 + center.y * 2 + center.z * 4);
-    const noise2 = this.noise(center.x * 7 + center.y * 5 + center.z * 3);
-    const noise3 = this.noise(center.x * 11 + center.y * 7 + center.z * 13);
+    // Use a more direct approach to hit target percentages
+    // Create noise from position but with much better distribution control
+    const seed = Math.abs(center.x * 1234 + center.y * 5678 + center.z * 9012);
+    const normalizedSeed = (seed % 1000) / 1000; // 0 to 1
     
-    // Combine noises for more realistic distribution
-    const combinedNoise = (noise1 * 0.5) + (noise2 * 0.3) + (noise3 * 0.2);
+    // Add some variation based on lat/lon for realistic patterns
+    const latVariation = Math.sin(lat * Math.PI / 90) * 0.1;
+    const lonVariation = Math.sin(lon * Math.PI / 180) * 0.05;
+    const combinedValue = normalizedSeed + latVariation + lonVariation;
     
-    // Additional factors: distance from poles, longitude patterns
-    const latFactor = Math.abs(lat) / 90; // 0 at equator, 1 at poles
-    const polarBonus = latFactor > 0.7 ? 0.2 : 0; // More likely to be water near poles
-    const temperateBonus = latFactor < 0.5 ? 0.1 : 0; // More grass in temperate zones
+    // Normalize back to 0-1 range
+    const finalValue = (combinedValue % 1 + 1) % 1;
     
-    // New distribution: water 65%, grass 20%, desert 10%, mountain 5%
-    const waterThreshold = 0.65 + polarBonus;
-    const grassThreshold = waterThreshold + 0.20 + temperateBonus;
-    const desertThreshold = grassThreshold + 0.10;
-    
-    if (combinedNoise < waterThreshold) {
+    // Direct percentage thresholds: water 65%, grass 20%, desert 10%, mountain 5%
+    if (finalValue < 0.65) {
       return 'water';
-    } else if (combinedNoise < grassThreshold) {
+    } else if (finalValue < 0.85) {
       return 'grass';
-    } else if (combinedNoise < desertThreshold) {
+    } else if (finalValue < 0.95) {
       return 'desert';
     } else {
       return 'mountain';
@@ -209,6 +205,11 @@ export class GlobeGeometry {
     const seed = 12345;
     x = ((x + seed) * 9301 + 49297) % 233280;
     return (x / 233280);
+  }
+
+  // Linear interpolation for smoother noise
+  private lerp(a: number, b: number, t: number): number {
+    return a + t * (b - a);
   }
 
   private sortFacesAroundVertex(center: THREE.Vector3, faceIndices: number[], dualVertices: THREE.Vector3[]): number[] {

@@ -1,4 +1,5 @@
 import { Player, GameTile } from '../client/src/lib/types/game';
+import { GlobeGeometry, TileData } from '../client/src/lib/geometry/GlobeGeometry';
 
 interface ActionResult {
   success: boolean;
@@ -12,66 +13,61 @@ export class GameState {
   private lastUpdate: number;
   private lastExpansionTime: number;
   private adjacencyMap: Map<number, number[]> = new Map();
+  private globeGeometry: GlobeGeometry;
+  private tileData: TileData[];
 
   constructor() {
     this.gameStartTime = Date.now();
     this.lastUpdate = Date.now();
     this.lastExpansionTime = Date.now();
+    
+    // Generate globe geometry to get tile positions
+    this.globeGeometry = new GlobeGeometry();
+    this.tileData = this.globeGeometry.getTileData();
+    
     this.initializeTiles();
     this.buildAdjacencyMap();
   }
 
   private initializeTiles() {
-    // Initialize tiles (4002 tiles as per the design)
-    // For now, create a simplified set - in a real implementation,
-    // this would match the client-side globe generation
-    for (let i = 0; i < 4002; i++) {
+    // Initialize tiles using the same generation as client
+    this.tileData.forEach(tileData => {
       const tile: GameTile = {
-        id: i,
+        id: tileData.id,
         hasCity: false,
         hasPort: false,
         population: 0,
-        terrainType: this.getRandomTerrain()
+        terrainType: tileData.terrainType
       };
-      this.tiles.set(i, tile);
-    }
+      this.tiles.set(tileData.id, tile);
+    });
     
     console.log(`Initialized ${this.tiles.size} tiles`);
   }
 
   private buildAdjacencyMap() {
-    // Build proper adjacency based on geodesic structure
-    // This creates realistic neighboring patterns for the icosahedral subdivision
-    for (let i = 0; i < 4002; i++) {
+    // Build true geometric adjacency using 3D positions
+    const neighborThreshold = 0.08; // Smaller threshold for immediate neighbors only
+    
+    this.tileData.forEach((tile, index) => {
       const adjacent: number[] = [];
       
-      // Create more realistic adjacency pattern based on geodesic structure
-      // Each tile has 5-6 neighbors in the geodesic polyhedron
-      const numNeighbors = (i % 12 === 0) ? 5 : 6; // Pentagons have 5, hexagons have 6
-      
-      for (let j = 1; j <= numNeighbors; j++) {
-        // Use modular arithmetic to create circular adjacency within local regions
-        const regionSize = 20; // Group tiles into regions
-        const region = Math.floor(i / regionSize);
-        const localIndex = i % regionSize;
-        
-        let neighborId;
-        if (j <= 3) {
-          // Close neighbors within same region
-          neighborId = region * regionSize + ((localIndex + j) % regionSize);
-        } else {
-          // Cross-region neighbors for geodesic connectivity
-          const crossRegion = (region + j - 3) % Math.ceil(4002 / regionSize);
-          neighborId = crossRegion * regionSize + localIndex;
+      // Find all tiles within the neighbor threshold distance
+      this.tileData.forEach((otherTile, otherIndex) => {
+        if (tile.id !== otherTile.id) {
+          // Calculate 3D distance between tile centers
+          const distance = tile.center.distanceTo(otherTile.center);
+          
+          if (distance < neighborThreshold) {
+            adjacent.push(otherTile.id);
+          }
         }
-        
-        if (neighborId < 4002 && neighborId !== i) {
-          adjacent.push(neighborId);
-        }
-      }
+      });
       
-      this.adjacencyMap.set(i, adjacent);
-    }
+      this.adjacencyMap.set(tile.id, adjacent);
+    });
+    
+    console.log(`Built adjacency map with average ${Array.from(this.adjacencyMap.values()).reduce((sum, adj) => sum + adj.length, 0) / this.adjacencyMap.size} neighbors per tile`);
   }
 
   private getRandomTerrain(): 'water' | 'grass' | 'desert' | 'mountain' {
