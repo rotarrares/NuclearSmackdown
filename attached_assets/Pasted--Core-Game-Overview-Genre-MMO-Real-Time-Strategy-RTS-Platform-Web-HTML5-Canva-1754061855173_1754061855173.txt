@@ -1,0 +1,129 @@
+### 🌐 Core Game Overview
+**Genre:** MMO Real-Time Strategy (RTS)  
+**Platform:** Web (HTML5 Canvas/WebGL + WebSocket backend)  
+**Perspective:** Top-down 3D rotating globe (spherical Earth-like map)  
+**Game Loop:** Spawn → Expand → Manage Population → Build Cities and Ports → Form Alliances → Launch War → Dominate the Globe  
+
+### 🌍 World Map: Spherical Tile Grid Globe Construction
+The world map is a 3D interactive globe composed of pentagonal and hexagonal tiles arranged using a Goldberg polyhedron structure, derived from a subdivided icosahedral geodesic polyhedron (class I, frequency n=20). This results in exactly 4002 tiles: 12 pentagons and 3990 hexagons. This tile count provides a balanced resolution for global strategy—detailed enough for territorial granularity while keeping computational load manageable (approximately 8000 vertices and 15,996 triangles when triangulated for rendering).  
+
+Each tile has a type: grassland, forest, desert, mountain, city, water, etc. Terrain and biomes are procedurally generated based on latitude and elevation. Hexagons are oriented to align properly on the sphere, with pentagons strategically placed to maintain spherical topology without distortion. The tiles are small and numerous, ensuring smooth great-circle paths for movement and a realistic Earth-like scale.  
+
+**Tile Positioning and Tiling Algorithm**  
+To position the tiles on the sphere without empty spaces, gaps, or overlaps, the globe uses a dual polyhedron approach derived from a geodesic subdivision of an icosahedron. This ensures a closed, manifold tiling where every edge is shared between exactly two tiles, and the entire sphere is covered seamlessly. The process involves generating a primal triangulated mesh first, then computing its dual to obtain the hex-pent tiles. No manual offsetting or rotation per tile is required beyond the inherent geometry, as the subdivision algorithm automatically handles the "offset" patterns typical in hexagonal grids (e.g., staggered rows) through barycentric placement and spherical projection. However, individual tile orientations are ensured by sorting vertices in a consistent winding order (e.g., counterclockwise), and the entire globe can be rotated as a whole if needed to align pentagons with desired latitudes (e.g., near poles for aesthetic or gameplay reasons).  
+
+Detailed steps for generation (implemented procedurally in JavaScript/Three.js client-side):  
+
+1. **Generate Primal Geodesic Polyhedron (Triangulated Sphere):**  
+   - Start with a base icosahedron: 12 vertices (normalized to unit sphere using the golden ratio φ ≈ 1.618, e.g., vertices like (0, ±1, ±φ) and cyclic permutations, all normalized). 20 triangular faces.  
+   - Subdivide each original triangular face into v² = 400 smaller triangles (for v=20).  
+     - For each original triangle with vertices A, B, C:  
+       - Create new vertices using barycentric coordinates: for integers i, j, k where i + j + k = v, position = (i·A + j·B + k·C) / v.  
+       - Normalize each new vertex to the unit sphere (divide by its Euclidean norm) to ensure it lies exactly on the sphere surface. This projection prevents distortion and ensures no gaps during subdivision.  
+     - Avoid duplicates on shared edges by using a hash map (keyed on sorted vertex pairs) to cache midpoint/segment points.  
+   - Result: 10v² + 2 = 4002 vertices, 30v² = 12,000 edges, 20v² = 8000 triangular faces. The barycentric placement naturally offsets points in a grid-like pattern (similar to hexagonal offsetting on a plane), adapted to the sphere's curvature via projection.  
+
+2. **Compute Dual Polyhedron (Hex-Pent Tiling):**  
+   - Dual vertices: For each primal triangular face, compute the centroid (average of its 3 vertices) and normalize to the sphere. This yields 8000 dual vertices, each slightly inside the sphere but projected outward.  
+   - Dual faces (tiles): For each primal vertex, collect the adjacent primal faces (typically 5 for the original 12 icosa vertices, 6 for others).  
+     - Build adjacency lists: Iterate over primal faces to map faces per vertex.  
+     - Orient each tile correctly: Sort the adjacent faces around the vertex by projecting vectors from the primal vertex to the dual vertices (face centers) onto a tangent plane (using two orthogonal basis vectors perpendicular to the vertex normal). Compute angles via arctan2 and sort for consistent winding (e.g., counterclockwise when viewed from outside). This ensures each tile "faces" outward toward the sphere's center (actually, normals point outward, but tiles are oriented radially).  
+     - Result: 12 pentagonal tiles (from degree-5 vertices) and 3990 hexagonal tiles (from degree-6 vertices). The sorting and shared edges guarantee no empty spaces— the tiling is topologically closed (Euler characteristic χ = 2 for sphere).  
+   - No additional rotations per tile are needed, as the projection and sorting align them properly. If hexagons appear misoriented (e.g., "pointy-top" vs. "flat-top"), it's inherent to the icosahedral symmetry; global rotation of all vertices (via a quaternion or matrix) can adjust the entire grid (e.g., rotate to place pentagons at poles: apply a rotation matrix to align a vertex with [0,1,0]).  
+
+This algorithm ensures seamless coverage: the spherical projection and dual construction eliminate gaps by design, with curvature absorbed by the 12 pentagons (introducing positive Gaussian curvature). For v=20, tiles are small enough (~0.09° average side length, assuming Earth radius) that they appear nearly flat, avoiding visible chord gaps in rendering.  
+
+**Player Interaction**  
+Players rotate the globe (drag to rotate, scroll to zoom). Tiles highlight based on ownership.  
+
+### 🌏 Spawn System
+New players spawn in "safe spawn zones" along the poles or low-population longitudes. Each spawn grants a Base HQ and a small number of starter tiles. Initial population is distributed between soldiers and workers.  
+
+### 🌾 Population & Economy System
+**Population Management**  
+Players manage a single population pool that grows over time. Population is distributed between soldiers and workers based on player-defined ratio sliders.  
+
+**Gold Production**  
+Workers generate gold passively per game tick. Gold is used for expanding territory and launching attacks.  
+
+**Cities**  
+Cities are neutral tiles that can be captured and built upon. Building a City increases the population cap and boosts population growth rate.  
+
+**Ports**  
+Ports can be built on coastal or water-adjacent tiles. Ports allow launching operations across oceans and enable new fronts in distant territories.  
+
+### 🚒 Units & Combat System
+**Unit Types**  
+- Soldiers: Used to defend and attack territory.  
+- Workers: Generate gold and support expansion.  
+
+**Combat**  
+Tile-based real-time engagements. Soldiers auto-attack enemy tiles and defend owned regions. Combat effectiveness depends on number and ratio of units present.  
+
+**Movement**  
+Units move along great-circle paths on the sphere. Players can direct attacks or reposition armies using geodesic navigation.  
+
+### 💥 Missiles & Nuclear Warfare
+**Missiles**  
+Require a Port or special structure to launch. Travel along great-circle arcs. Visible tracer arc on globe. Travel time depends on spherical distance.  
+
+**Nukes**  
+Require Nuclear Token. Large AoE on impact with spherical blast radius. Leaves irradiated crater, damages all units in target tiles. Global warning countdown shown to all players.  
+
+### ⚔️ Alliances & Global Diplomacy
+**Alliance Mechanics**  
+Public or private groups. Coordinate attacks and strategy.  
+
+**Global Warfare**  
+Strategic cooperation across continents. Allies can support distant battles using Ports.  
+
+### 📊 User Interface (Globe UI)
+**Main Screen**  
+Fully interactive globe rendered in an HTML5 Canvas element using WebGL. Territory borders overlay curved tiles. Hovering shows tile info and city/port status. Mini-globe radar for missile warnings and events.  
+
+**Panels**  
+Gold counter and population sliders. Alliance and territory overview. Alerts and global leaderboard.  
+
+### ⚡ Server Architecture
+**World Model**  
+Tile data: longitude, latitude, hexID, type, owner, hasCity, hasPort, population. Territory is fully visible to all players at all times.  
+
+**Movement & Combat**  
+Great-circle pathfinding. Real-time population redistribution.  
+
+**Game State**  
+Persisted world state. Server syncs unit counts, ratios, city effects.  
+
+### 🎨 Rendering and Performance Optimization
+The globe and tiles are rendered in the browser using Three.js (a WebGL library) within an HTML5 Canvas for cross-device compatibility and smooth 3D graphics. The geometry is generated client-side on load using the procedural algorithm described above to create the Goldberg polyhedron mesh:  
+
+1. **Geometry Generation:**  
+   - Start with a base icosahedron (12 vertices, 20 triangular faces).  
+   - Subdivide each triangular face into n²=400 smaller triangles (for n=20), adding vertices along edges and interiors, resulting in 10n² + 2 = 4002 vertices for the primal geodesic mesh.  
+   - Compute the dual polyhedron to obtain the hex-pent tiling: vertices at the centroids of the primal triangles (projected onto the unit sphere), and faces defined by grouping around primal vertices (yielding 12 pentagons and 3990 hexagons).  
+   - Normalize all vertices to lie on a unit sphere for consistent scaling.  
+   - Triangulate pentagons (into 3 triangles each) and hexagons (into 4 triangles each) for WebGL compatibility, producing ~15,996 triangles total.  
+
+2. **Mesh Setup in Three.js:**  
+   - Create a single BufferGeometry with position, normal, and color attributes (8000 vertices, ~12,000 edges). Use an index buffer for triangulated faces to minimize data duplication.  
+   - Apply a MeshBasicMaterial or MeshLambertMaterial for flat-shaded tiles (colored by ownership/terrain type) to avoid expensive lighting calculations if not needed. For enhanced visuals, use MeshStandardMaterial with low-cost ambient occlusion.  
+   - Add a separate LineSegments geometry for tile borders (using edge data) to draw ownership outlines, rendered with a basic line material for crisp visibility.  
+
+3. **Performance Optimizations:**  
+   - **Static Geometry:** Generate the mesh once on client initialization and reuse it. Updates (e.g., tile ownership changes via WebSocket) only modify the color attribute buffer (e.g., geometry.attributes.color.needsUpdate = true), avoiding full rebuilds. Use a data texture or uniform array in a custom shader to map tile IDs to colors for even faster updates.  
+   - **Level of Detail (LOD):** Although 4002 tiles are lightweight (~8000 vertices is negligible for modern GPUs handling millions), implement simple LOD by reducing border detail (e.g., thinner lines or fewer segments) when zoomed out far, while always maintaining the full tile grid visibility. Use Three.js LOD object to swap border meshes based on camera distance, but keep the primary tile mesh at full resolution to ensure the game grid remains visible and interactive at all zoom levels.  
+   - **Culling and Batching:** Enable frustum culling on the mesh to skip rendering back-facing tiles (half the globe is typically hidden). Batch all tiles into one mesh to minimize draw calls (target <10 per frame).  
+   - **Shader Efficiency:** Use vertex shaders to handle sphere projection and normals; avoid fragment-heavy effects like per-pixel lighting unless on high-end devices. For mobile, fall back to lower precision (mediump) in shaders.  
+   - **Interaction Optimization:** For raycasting (tile selection/hovering), use a simplified picking mesh with larger bounding spheres per tile group to reduce computation. Limit raycasts to mouse-move events with debouncing.  
+   - **Memory and Loading:** Compress geometry data (e.g., via quantized positions) if pre-generating server-side. Target 60 FPS by profiling with Chrome DevTools; with 4002 tiles, expect <1ms render time on average hardware.  
+   - **Zoom and Rotation:** Use OrbitControls for smooth dragging/zooming, with damping to reduce jitter. Clamp zoom to prevent excessive detail loss or clipping.  
+
+Results are displayed directly in the browser's Canvas element, providing a seamless, interactive 3D globe view with real-time updates synced via WebSockets.  
+
+### 🎖️ Meta Systems
+**Leaderboards**  
+Rankings based on territory, population, gold, nukes used.  
+
+Globe skins. Alliance insignias. Custom unit markers.  
+
+**Summary:** OpenFront.io is reimagined as a 3D globe RTS focused on managing population, capturing cities, and waging large-scale wars with simple unit types. Players balance economy and offense with worker/soldier ratios, using cities and ports to dominate across the planet. All player territories are always visible, emphasizing global strategy and open competition.
