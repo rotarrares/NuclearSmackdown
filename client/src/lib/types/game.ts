@@ -29,8 +29,8 @@ export interface GameTile {
   // Population on this tile
   population: number;
   
-  // Terrain type (for future expansion)
-  terrainType?: 'grassland' | 'forest' | 'desert' | 'mountain' | 'water';
+  // Terrain type
+  terrainType: 'water' | 'desert' | 'mountain';
 }
 
 export interface Tile extends GameTile {

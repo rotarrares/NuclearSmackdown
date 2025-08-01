@@ -10,11 +10,14 @@ export class GameState {
   private tiles: Map<number, GameTile> = new Map();
   private gameStartTime: number;
   private lastUpdate: number;
+  private tickCounter: number = 0;
+  private adjacencyMap: Map<number, number[]> = new Map();
 
   constructor() {
     this.gameStartTime = Date.now();
     this.lastUpdate = Date.now();
     this.initializeTiles();
+    this.buildAdjacencyMap();
   }
 
   private initializeTiles() {
@@ -35,10 +38,28 @@ export class GameState {
     console.log(`Initialized ${this.tiles.size} tiles`);
   }
 
-  private getRandomTerrain(): 'grassland' | 'forest' | 'desert' | 'mountain' | 'water' {
-    const terrains: ('grassland' | 'forest' | 'desert' | 'mountain' | 'water')[] = 
-      ['grassland', 'forest', 'desert', 'mountain', 'water'];
-    return terrains[Math.floor(Math.random() * terrains.length)];
+  private buildAdjacencyMap() {
+    // Simple adjacency for demonstration - in real implementation this would be generated from globe geometry
+    // For now, create a basic adjacency where each tile connects to nearby tiles
+    for (let i = 0; i < 4002; i++) {
+      const adjacent: number[] = [];
+      
+      // Add some adjacent tiles (simplified logic for demonstration)
+      for (let j = 1; j <= 6; j++) {
+        const neighborId = (i + j) % 4002;
+        adjacent.push(neighborId);
+      }
+      
+      this.adjacencyMap.set(i, adjacent);
+    }
+  }
+
+  private getRandomTerrain(): 'water' | 'desert' | 'mountain' {
+    // Generate terrain with 70% water coverage
+    const rand = Math.random();
+    if (rand < 0.7) return 'water';
+    if (rand < 0.85) return 'desert';
+    return 'mountain';
   }
 
   spawnPlayer(username: string): Player {
@@ -126,6 +147,11 @@ export class GameState {
       }
     }
     
+    // Cannot claim water tiles
+    if (tile.terrainType === 'water') {
+      return { success: false, error: 'Cannot claim water tiles' };
+    }
+    
     // Check if player can afford expansion
     const expansionCost = this.getExpansionCost(playerId, tileId);
     if (player.gold < expansionCost) {
@@ -195,6 +221,7 @@ export class GameState {
     const now = Date.now();
     const deltaTime = now - this.lastUpdate;
     this.lastUpdate = now;
+    this.tickCounter++;
     
     // Update each player's economy
     this.players.forEach(player => {
@@ -224,12 +251,53 @@ export class GameState {
       }
     });
     
+    // Automatic territory expansion every 5 ticks
+    if (this.tickCounter % 5 === 0) {
+      this.performAutomaticExpansion();
+    }
+    
     // Remove inactive players (30 minutes of inactivity)
     const inactivityThreshold = 30 * 60 * 1000;
     this.players.forEach((player, playerId) => {
       if (now - player.lastActive > inactivityThreshold) {
         console.log(`Removing inactive player: ${player.username}`);
         this.removePlayer(playerId);
+      }
+    });
+  }
+
+  private performAutomaticExpansion() {
+    this.players.forEach(player => {
+      const ownedTiles = Array.from(this.tiles.values())
+        .filter(tile => tile.ownerId === player.id);
+      
+      // Find all adjacent land tiles that can be expanded to
+      const expansionCandidates: number[] = [];
+      
+      ownedTiles.forEach(ownedTile => {
+        const adjacentTileIds = this.adjacencyMap.get(ownedTile.id) || [];
+        
+        adjacentTileIds.forEach(tileId => {
+          const tile = this.tiles.get(tileId);
+          if (tile && 
+              !tile.ownerId && 
+              tile.terrainType !== 'water' && 
+              !expansionCandidates.includes(tileId)) {
+            expansionCandidates.push(tileId);
+          }
+        });
+      });
+      
+      // Automatically expand to one random candidate if any exist
+      if (expansionCandidates.length > 0) {
+        const randomTileId = expansionCandidates[Math.floor(Math.random() * expansionCandidates.length)];
+        const tile = this.tiles.get(randomTileId);
+        
+        if (tile) {
+          tile.ownerId = player.id;
+          tile.population = 5; // Small population for automatic expansion
+          console.log(`Player ${player.username} automatically expanded to tile ${randomTileId} (${tile.terrainType})`);
+        }
       }
     });
   }

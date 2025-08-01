@@ -32,12 +32,28 @@ const Globe = () => {
     
     tileData.forEach((tile, index) => {
       const gameStateTile = tiles.get(tile.id);
-      let color = new THREE.Color(0x2a4a3a); // Default dark green
+      let color = new THREE.Color(0x2a4a3a); // Default
       
       if (gameStateTile?.ownerId) {
+        // Owned territory - use player color
         const owner = players.get(gameStateTile.ownerId);
         if (owner) {
           color = new THREE.Color(owner.color);
+        }
+      } else {
+        // Unowned territory - use terrain color
+        switch (tile.terrainType) {
+          case 'water':
+            color = new THREE.Color(0x1e40af); // Blue
+            break;
+          case 'desert':
+            color = new THREE.Color(0xfbbf24); // Sand yellow
+            break;
+          case 'mountain':
+            color = new THREE.Color(0x6b7280); // Gray
+            break;
+          default:
+            color = new THREE.Color(0x2a4a3a); // Fallback green
         }
       }
       

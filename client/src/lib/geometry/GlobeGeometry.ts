@@ -7,6 +7,7 @@ export interface TileData {
   center: THREE.Vector3;
   lat: number;
   lon: number;
+  terrainType: 'water' | 'desert' | 'mountain';
   startVertex: number;
   startFace: number;
   faceCount: number;
@@ -147,6 +148,9 @@ export class GlobeGeometry {
       const lat = Math.asin(tileCenter.y) * 180 / Math.PI;
       const lon = Math.atan2(tileCenter.z, tileCenter.x) * 180 / Math.PI;
 
+      // Generate terrain type
+      const terrainType = this.generateTerrainType(lat, lon, tileCenter);
+
       this.tiles.push({
         id: tileId++,
         type: tileType,
@@ -154,13 +158,51 @@ export class GlobeGeometry {
         center: tileCenter,
         lat,
         lon,
+        terrainType,
         startVertex: 0, // Will be set during mesh creation
         startFace: 0,   // Will be set during mesh creation
         faceCount: tileVertices.length - 2 // Triangulated count
       });
     });
 
+    const waterTiles = this.tiles.filter(t => t.terrainType === 'water').length;
+    const desertTiles = this.tiles.filter(t => t.terrainType === 'desert').length;
+    const mountainTiles = this.tiles.filter(t => t.terrainType === 'mountain').length;
+    
     console.log(`Generated ${this.tiles.length} tiles (${this.tiles.filter(t => t.type === 'pentagon').length} pentagons, ${this.tiles.filter(t => t.type === 'hexagon').length} hexagons)`);
+    console.log(`Terrain: ${waterTiles} water (${(waterTiles/this.tiles.length*100).toFixed(1)}%), ${desertTiles} desert, ${mountainTiles} mountain`);
+  }
+
+  private generateTerrainType(lat: number, lon: number, center: THREE.Vector3): 'water' | 'desert' | 'mountain' {
+    // Create noise-based terrain generation
+    const noise1 = this.noise(center.x * 3 + center.y * 2 + center.z * 4);
+    const noise2 = this.noise(center.x * 7 + center.y * 5 + center.z * 3);
+    const noise3 = this.noise(center.x * 11 + center.y * 7 + center.z * 13);
+    
+    // Combine noises for more realistic distribution
+    const combinedNoise = (noise1 * 0.5) + (noise2 * 0.3) + (noise3 * 0.2);
+    
+    // Additional factors: distance from poles, longitude patterns
+    const latFactor = Math.abs(lat) / 90; // 0 at equator, 1 at poles
+    const polarBonus = latFactor > 0.7 ? 0.3 : 0; // More likely to be water near poles
+    
+    // Adjust water threshold to get ~70% water coverage
+    const waterThreshold = 0.25 + polarBonus;
+    
+    if (combinedNoise < waterThreshold) {
+      return 'water';
+    } else if (combinedNoise < 0.6) {
+      return 'desert';
+    } else {
+      return 'mountain';
+    }
+  }
+
+  // Simple noise function for terrain generation
+  private noise(x: number): number {
+    const seed = 12345;
+    x = ((x + seed) * 9301 + 49297) % 233280;
+    return (x / 233280);
   }
 
   private sortFacesAroundVertex(center: THREE.Vector3, faceIndices: number[], dualVertices: THREE.Vector3[]): number[] {
