@@ -46,6 +46,9 @@ const Globe = () => {
           case 'water':
             color = new THREE.Color(0x1e40af); // Blue
             break;
+          case 'grass':
+            color = new THREE.Color(0x22c55e); // Green
+            break;
           case 'desert':
             color = new THREE.Color(0xfbbf24); // Sand yellow
             break;
@@ -53,7 +56,7 @@ const Globe = () => {
             color = new THREE.Color(0x6b7280); // Gray
             break;
           default:
-            color = new THREE.Color(0x2a4a3a); // Fallback green
+            color = new THREE.Color(0x2a4a3a); // Fallback
         }
       }
       

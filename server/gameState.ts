@@ -10,12 +10,13 @@ export class GameState {
   private tiles: Map<number, GameTile> = new Map();
   private gameStartTime: number;
   private lastUpdate: number;
-  private tickCounter: number = 0;
+  private lastExpansionTime: number;
   private adjacencyMap: Map<number, number[]> = new Map();
 
   constructor() {
     this.gameStartTime = Date.now();
     this.lastUpdate = Date.now();
+    this.lastExpansionTime = Date.now();
     this.initializeTiles();
     this.buildAdjacencyMap();
   }
@@ -39,26 +40,46 @@ export class GameState {
   }
 
   private buildAdjacencyMap() {
-    // Simple adjacency for demonstration - in real implementation this would be generated from globe geometry
-    // For now, create a basic adjacency where each tile connects to nearby tiles
+    // Build proper adjacency based on geodesic structure
+    // This creates realistic neighboring patterns for the icosahedral subdivision
     for (let i = 0; i < 4002; i++) {
       const adjacent: number[] = [];
       
-      // Add some adjacent tiles (simplified logic for demonstration)
-      for (let j = 1; j <= 6; j++) {
-        const neighborId = (i + j) % 4002;
-        adjacent.push(neighborId);
+      // Create more realistic adjacency pattern based on geodesic structure
+      // Each tile has 5-6 neighbors in the geodesic polyhedron
+      const numNeighbors = (i % 12 === 0) ? 5 : 6; // Pentagons have 5, hexagons have 6
+      
+      for (let j = 1; j <= numNeighbors; j++) {
+        // Use modular arithmetic to create circular adjacency within local regions
+        const regionSize = 20; // Group tiles into regions
+        const region = Math.floor(i / regionSize);
+        const localIndex = i % regionSize;
+        
+        let neighborId;
+        if (j <= 3) {
+          // Close neighbors within same region
+          neighborId = region * regionSize + ((localIndex + j) % regionSize);
+        } else {
+          // Cross-region neighbors for geodesic connectivity
+          const crossRegion = (region + j - 3) % Math.ceil(4002 / regionSize);
+          neighborId = crossRegion * regionSize + localIndex;
+        }
+        
+        if (neighborId < 4002 && neighborId !== i) {
+          adjacent.push(neighborId);
+        }
       }
       
       this.adjacencyMap.set(i, adjacent);
     }
   }
 
-  private getRandomTerrain(): 'water' | 'desert' | 'mountain' {
-    // Generate terrain with 70% water coverage
+  private getRandomTerrain(): 'water' | 'grass' | 'desert' | 'mountain' {
+    // Generate terrain: water 65%, grass 20%, desert 10%, mountain 5%
     const rand = Math.random();
-    if (rand < 0.7) return 'water';
-    if (rand < 0.85) return 'desert';
+    if (rand < 0.65) return 'water';
+    if (rand < 0.85) return 'grass';
+    if (rand < 0.95) return 'desert';
     return 'mountain';
   }
 
@@ -221,7 +242,6 @@ export class GameState {
     const now = Date.now();
     const deltaTime = now - this.lastUpdate;
     this.lastUpdate = now;
-    this.tickCounter++;
     
     // Update each player's economy
     this.players.forEach(player => {
@@ -251,9 +271,10 @@ export class GameState {
       }
     });
     
-    // Automatic territory expansion every 5 ticks
-    if (this.tickCounter % 5 === 0) {
+    // Automatic territory expansion every second
+    if (now - this.lastExpansionTime >= 1000) {
       this.performAutomaticExpansion();
+      this.lastExpansionTime = now;
     }
     
     // Remove inactive players (30 minutes of inactivity)

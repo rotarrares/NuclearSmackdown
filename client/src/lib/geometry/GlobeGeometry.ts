@@ -7,7 +7,7 @@ export interface TileData {
   center: THREE.Vector3;
   lat: number;
   lon: number;
-  terrainType: 'water' | 'desert' | 'mountain';
+  terrainType: 'water' | 'grass' | 'desert' | 'mountain';
   startVertex: number;
   startFace: number;
   faceCount: number;
@@ -166,14 +166,15 @@ export class GlobeGeometry {
     });
 
     const waterTiles = this.tiles.filter(t => t.terrainType === 'water').length;
+    const grassTiles = this.tiles.filter(t => t.terrainType === 'grass').length;
     const desertTiles = this.tiles.filter(t => t.terrainType === 'desert').length;
     const mountainTiles = this.tiles.filter(t => t.terrainType === 'mountain').length;
     
     console.log(`Generated ${this.tiles.length} tiles (${this.tiles.filter(t => t.type === 'pentagon').length} pentagons, ${this.tiles.filter(t => t.type === 'hexagon').length} hexagons)`);
-    console.log(`Terrain: ${waterTiles} water (${(waterTiles/this.tiles.length*100).toFixed(1)}%), ${desertTiles} desert, ${mountainTiles} mountain`);
+    console.log(`Terrain: ${waterTiles} water (${(waterTiles/this.tiles.length*100).toFixed(1)}%), ${grassTiles} grass (${(grassTiles/this.tiles.length*100).toFixed(1)}%), ${desertTiles} desert (${(desertTiles/this.tiles.length*100).toFixed(1)}%), ${mountainTiles} mountain (${(mountainTiles/this.tiles.length*100).toFixed(1)}%)`);
   }
 
-  private generateTerrainType(lat: number, lon: number, center: THREE.Vector3): 'water' | 'desert' | 'mountain' {
+  private generateTerrainType(lat: number, lon: number, center: THREE.Vector3): 'water' | 'grass' | 'desert' | 'mountain' {
     // Create noise-based terrain generation
     const noise1 = this.noise(center.x * 3 + center.y * 2 + center.z * 4);
     const noise2 = this.noise(center.x * 7 + center.y * 5 + center.z * 3);
@@ -184,14 +185,19 @@ export class GlobeGeometry {
     
     // Additional factors: distance from poles, longitude patterns
     const latFactor = Math.abs(lat) / 90; // 0 at equator, 1 at poles
-    const polarBonus = latFactor > 0.7 ? 0.3 : 0; // More likely to be water near poles
+    const polarBonus = latFactor > 0.7 ? 0.2 : 0; // More likely to be water near poles
+    const temperateBonus = latFactor < 0.5 ? 0.1 : 0; // More grass in temperate zones
     
-    // Adjust water threshold to get ~70% water coverage
-    const waterThreshold = 0.25 + polarBonus;
+    // New distribution: water 65%, grass 20%, desert 10%, mountain 5%
+    const waterThreshold = 0.65 + polarBonus;
+    const grassThreshold = waterThreshold + 0.20 + temperateBonus;
+    const desertThreshold = grassThreshold + 0.10;
     
     if (combinedNoise < waterThreshold) {
       return 'water';
-    } else if (combinedNoise < 0.6) {
+    } else if (combinedNoise < grassThreshold) {
+      return 'grass';
+    } else if (combinedNoise < desertThreshold) {
       return 'desert';
     } else {
       return 'mountain';

@@ -30,7 +30,7 @@ export interface GameTile {
   population: number;
   
   // Terrain type
-  terrainType: 'water' | 'desert' | 'mountain';
+  terrainType: 'water' | 'grass' | 'desert' | 'mountain';
 }
 
 export interface Tile extends GameTile {
