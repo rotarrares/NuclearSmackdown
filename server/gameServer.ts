@@ -110,6 +110,22 @@ export class GameServer {
       case 'launch_missile':
         this.handleLaunchMissile(ws, message.data);
         break;
+
+      case 'create_alliance':
+        this.handleCreateAlliance(ws, message.data);
+        break;
+
+      case 'join_alliance':
+        this.handleJoinAlliance(ws, message.data);
+        break;
+
+      case 'leave_alliance':
+        this.handleLeaveAlliance(ws, message.data);
+        break;
+
+      case 'kick_from_alliance':
+        this.handleKickFromAlliance(ws, message.data);
+        break;
         
       default:
         this.sendError(ws, `Unknown message type: ${message.type}`);
@@ -376,3 +392,75 @@ export class GameServer {
     this.connections.clear();
   }
 }
+
+
+  private handleCreateAlliance(ws: WebSocket, data: { name: string, isPublic: boolean }) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, 'Player not spawned');
+      return;
+    }
+    const result = this.gameState.createAlliance(connection.playerId, data.name, data.isPublic);
+    if (result.success) {
+      this.sendToClient(ws, { type: 'alliance_created', data: result.data });
+      this.broadcast({ type: 'alliance_updated', data: result.data });
+    } else {
+      this.sendError(ws, result.error || 'Failed to create alliance');
+    }
+  }
+
+
+
+
+  private handleJoinAlliance(ws: WebSocket, data: { allianceId: string }) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, "Player not spawned");
+      return;
+    }
+    const result = this.gameState.joinAlliance(connection.playerId, data.allianceId);
+    if (result.success) {
+      this.sendToClient(ws, { type: "alliance_joined", data: result.data });
+      this.broadcast({ type: "alliance_updated", data: result.data });
+    } else {
+      this.sendError(ws, result.error || "Failed to join alliance");
+    }
+  }
+
+
+
+
+  private handleLeaveAlliance(ws: WebSocket, data: {}) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, "Player not spawned");
+      return;
+    }
+    const result = this.gameState.leaveAlliance(connection.playerId);
+    if (result.success) {
+      this.sendToClient(ws, { type: "alliance_left", data: result.data });
+      this.broadcast({ type: "alliance_updated", data: result.data });
+    } else {
+      this.sendError(ws, result.error || "Failed to leave alliance");
+    }
+  }
+
+
+
+
+  private handleKickFromAlliance(ws: WebSocket, data: { memberId: string }) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, "Player not spawned");
+      return;
+    }
+    const result = this.gameState.kickFromAlliance(connection.playerId, data.memberId);
+    if (result.success) {
+      this.sendToClient(ws, { type: "alliance_member_kicked", data: result.data });
+      this.broadcast({ type: "alliance_updated", data: result.data });
+    } else {
+      this.sendError(ws, result.error || "Failed to kick member");
+    }
+  }
+
+
