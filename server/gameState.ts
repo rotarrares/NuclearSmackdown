@@ -47,7 +47,8 @@ export class GameState {
 
   private buildAdjacencyMap() {
     // Build true geometric adjacency using 3D positions
-    const neighborThreshold = 0.08; // Smaller threshold for immediate neighbors only
+    // With frequency 64, tiles are much smaller, so we need a smaller threshold
+    const neighborThreshold = 0.025; // Much smaller threshold for frequency 64
     
     this.tileData.forEach((tile, index) => {
       const adjacent: number[] = [];
@@ -267,8 +268,8 @@ export class GameState {
       }
     });
     
-    // Automatic territory expansion every second
-    if (now - this.lastExpansionTime >= 1000) {
+    // Automatic territory expansion every 0.4 seconds
+    if (now - this.lastExpansionTime >= 400) {
       this.performAutomaticExpansion();
       this.lastExpansionTime = now;
     }

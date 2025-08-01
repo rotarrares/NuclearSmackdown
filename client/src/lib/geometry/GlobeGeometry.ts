@@ -40,8 +40,8 @@ export class GlobeGeometry {
       [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
     ];
 
-    // Step 2: Subdivide to create geodesic polyhedron (frequency = 20 for 4002 vertices)
-    const frequency = 20;
+    // Step 2: Subdivide to create geodesic polyhedron (frequency = 64 for higher detail)
+    const frequency = 64;
     const subdividedVertices: THREE.Vector3[] = [];
     const subdividedFaces: number[][] = [];
     const vertexMap = new Map<string, number>(); // To avoid duplicate vertices
@@ -175,28 +175,59 @@ export class GlobeGeometry {
   }
 
   private generateTerrainType(lat: number, lon: number, center: THREE.Vector3): 'water' | 'grass' | 'desert' | 'mountain' {
-    // Use a more direct approach to hit target percentages
-    // Create noise from position but with much better distribution control
-    const seed = Math.abs(center.x * 1234 + center.y * 5678 + center.z * 9012);
-    const normalizedSeed = (seed % 1000) / 1000; // 0 to 1
+    // Create continent-like patterns using multiple noise layers
+    const noise1 = this.noise(center.x * 0.8 + center.y * 1.2 + center.z * 0.6);
+    const noise2 = this.noise(center.x * 3 + center.y * 2 + center.z * 4);
+    const noise3 = this.noise(center.x * 8 + center.y * 6 + center.z * 7);
     
-    // Add some variation based on lat/lon for realistic patterns
-    const latVariation = Math.sin(lat * Math.PI / 90) * 0.1;
-    const lonVariation = Math.sin(lon * Math.PI / 180) * 0.05;
-    const combinedValue = normalizedSeed + latVariation + lonVariation;
+    // Combine noise layers for continent formation
+    const continentNoise = (noise1 * 0.6) + (noise2 * 0.25) + (noise3 * 0.15);
     
-    // Normalize back to 0-1 range
-    const finalValue = (combinedValue % 1 + 1) % 1;
+    // Climate zones based on latitude
+    const absLat = Math.abs(lat);
+    const equatorialZone = absLat < 23.5; // Tropics
+    const temperateZone = absLat >= 23.5 && absLat < 66.5;
+    const polarZone = absLat >= 66.5;
     
-    // Direct percentage thresholds: water 65%, grass 20%, desert 10%, mountain 5%
-    if (finalValue < 0.65) {
+    // Continental shelf effect - areas more likely to be land
+    const continentalValue = continentNoise + (Math.sin(lon * 0.02) * 0.1);
+    
+    // Water threshold varies by location to create continent-like shapes
+    let waterThreshold = 0.65;
+    
+    // Create continent clusters
+    if (continentalValue > 0.4 && continentalValue < 0.75) {
+      waterThreshold -= 0.2; // More land in continental areas
+    }
+    
+    // Ocean areas
+    if (continentalValue < 0.2 || continentalValue > 0.9) {
+      waterThreshold += 0.15; // More water in oceanic areas
+    }
+    
+    // Basic terrain assignment
+    if (continentNoise < waterThreshold) {
       return 'water';
-    } else if (finalValue < 0.85) {
-      return 'grass';
-    } else if (finalValue < 0.95) {
+    }
+    
+    // Land terrain based on climate zones
+    const landNoise = this.noise(center.x * 15 + center.y * 12 + center.z * 18);
+    
+    if (equatorialZone) {
+      // Tropics: more grass and desert
+      if (landNoise < 0.6) return 'grass';
+      if (landNoise < 0.85) return 'desert';
+      return 'mountain';
+    } else if (temperateZone) {
+      // Temperate: mostly grass with some mountains
+      if (landNoise < 0.75) return 'grass';
+      if (landNoise < 0.9) return 'mountain';
       return 'desert';
     } else {
-      return 'mountain';
+      // Polar: more mountains and some grass (tundra)
+      if (landNoise < 0.4) return 'grass';
+      if (landNoise < 0.7) return 'mountain';
+      return 'water'; // Ice/frozen water
     }
   }
 
