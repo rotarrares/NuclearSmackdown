@@ -11,6 +11,7 @@ export class GameState {
   private players: Map<string, Player> = new Map();
   private tiles: Map<number, GameTile> = new Map();
   private missiles: Map<string, Missile> = new Map();
+  private alliances: Map<string, Alliance> = new Map();
   private gameStartTime: number;
   private lastUpdate: number;
   private lastExpansionTime: number;
@@ -103,11 +104,25 @@ export class GameState {
     
     this.players.set(playerId, player);
     
-    // Claim spawn tile
+    // Claim spawn tile and a few surrounding tiles as starter territory
     const spawnTile = this.tiles.get(spawnTileId);
     if (spawnTile) {
       spawnTile.ownerId = playerId;
+      spawnTile.structureType = 'base_hq'; // Assign Base HQ
       spawnTile.population = 50; // Initial population on spawn tile
+
+      // Claim a few adjacent tiles
+      const adjacentTiles = this.adjacencyMap.get(spawnTileId) || [];
+      let claimedStarterTiles = 0;
+      for (const adjTileId of adjacentTiles) {
+        if (claimedStarterTiles >= 3) break; // Claim 3 starter tiles
+        const adjTile = this.tiles.get(adjTileId);
+        if (adjTile && !adjTile.ownerId && adjTile.terrainType !== 'water') {
+          adjTile.ownerId = playerId;
+          adjTile.population = 10; // Small population for starter tiles
+          claimedStarterTiles++;
+        }
+      }
     }
     
     return player;
@@ -167,9 +182,9 @@ export class GameState {
       };
     }
     
-    // If tile is owned by another player
+    // If tile is owned by another player, initiate combat
     if (tile.ownerId && tile.ownerId !== playerId) {
-      return { success: false, error: 'Tile owned by another player' };
+      return this.initiateCombat(playerId, tileId);
     }
     
     // Cannot claim water tiles
@@ -183,15 +198,11 @@ export class GameState {
     }
     
     // Check if player has enough soldiers for expansion
-    const soldiers = Math.floor(player.population * player.workerRatio);
-    const requiredSoldiers = 10; // Base soldier cost for expansion
-    
-    if (soldiers < requiredSoldiers) {
-      return { success: false, error: `Need ${requiredSoldiers} soldiers` };
+    const requiredGold = 50; // Gold cost for expansion
+    if (player.gold < requiredGold) {
+      return { success: false, error: `Need ${requiredGold} gold for expansion` };
     }
-    
-    // Perform expansion using soldiers
-    player.population -= requiredSoldiers; // Use soldiers for expansion
+    player.gold -= requiredGold;
     player.lastActive = Date.now();
     
     tile.ownerId = playerId;
@@ -293,16 +304,20 @@ export class GameState {
       
       // Population growth (per second, scaled by deltaTime)
       const baseGrowth = ownedTiles.length * 0.01;
-      const cityBonus = ownedTiles.filter(tile => tile.hasCity).length * 0.05;
+      const cityBonus = ownedTiles.filter(tile => tile.structureType === 'city').length * 0.05;
+      const populationCapBonus = ownedTiles.filter(tile => tile.structureType === 'city').length * 200; // Each city adds 200 to population cap
+      const maxPopulation = ownedTiles.length * 100 + populationCapBonus; // Base cap + city bonus
+      
       const populationGrowth = (baseGrowth + cityBonus) * (deltaTime / 1000);
+      
+      // Apply population growth, but cap it
+      player.population = Math.min(player.population + populationGrowth, maxPopulation);
       
       // Gold generation from workers
       const workers = player.population * (1 - player.workerRatio);
       const goldPerSecond = workers * 0.1;
       const goldGrowth = goldPerSecond * (deltaTime / 1000);
       
-      // Update player
-      player.population += populationGrowth;
       player.gold += goldGrowth;
       
       // Distribute population to tiles
@@ -404,10 +419,11 @@ export class GameState {
       return { success: false, error: 'Tile not found' };
     }
     
-    // Check if player owns the launching tile and it has a missile silo
-    if (fromTile.ownerId !== playerId || fromTile.structureType !== 'missile_silo') {
-      return { success: false, error: 'No missile silo at launch location' };
+    const missileCost = 200; // Gold cost for missile
+    if (player.gold < missileCost) {
+      return { success: false, error: `Need ${missileCost} gold to launch missile` };
     }
+    player.gold -= missileCost;
     
     // Generate missile trajectory along sphere surface
     const fromTileData = this.tileData.find(t => t.id === fromTileId);
@@ -447,14 +463,24 @@ export class GameState {
       return { success: false, error: 'Target tile not found' };
     }
     
-    // Destroy any structure on the target tile
-    if (targetTile.structureType) {
-      targetTile.structureType = undefined;
-    }
-    
-    // Reduce population by 50%
-    targetTile.population = Math.floor(targetTile.population * 0.5);
-    
+    // Apply nuclear blast effects
+    const blastRadiusTiles = this.getTilesInRadius(missile.toTileId, 2); // 2-tile radius for nuke
+    blastRadiusTiles.forEach(tileId => {
+      const affectedTile = this.tiles.get(tileId);
+      if (affectedTile) {
+        // Damage units
+        affectedTile.population = Math.floor(affectedTile.population * 0.2); // 80% population loss
+        // Remove structures
+        affectedTile.structureType = undefined;
+        // Mark as irradiated (for visual effect or future gameplay)
+        affectedTile.isIrradiated = true;
+      }
+    });
+
+    // Global warning countdown (this would be handled by the client receiving the missile_impact event)
+    // For now, just log it
+    console.log(`GLOBAL WARNING: Nuclear missile impact at tile ${missile.toTileId}!`);
+
     // Remove missile
     this.missiles.delete(missileId);
     
@@ -504,3 +530,171 @@ export class GameState {
     return trajectory;
   }
 }
+
+
+  private initiateCombat(attackingPlayerId: string, targetTileId: number): ActionResult {
+    const attackingPlayer = this.players.get(attackingPlayerId);
+    const targetTile = this.tiles.get(targetTileId);
+
+    if (!attackingPlayer || !targetTile) {
+      return { success: false, error: 'Combat error: Player or tile not found' };
+    }
+
+    const defendingPlayer = this.players.get(targetTile.ownerId!); // Defending player must exist if tile is owned
+    if (!defendingPlayer) {
+      return { success: false, error: 'Combat error: Defending player not found' };
+    }
+
+    // Get attacking and defending forces (soldiers)
+    const attackingSoldiers = Math.floor(attackingPlayer.population * (1 - attackingPlayer.workerRatio));
+    const defendingSoldiers = Math.floor(targetTile.population * (1 - defendingPlayer.workerRatio));
+
+    // Simple combat resolution: higher soldier count wins, or a percentage of population is lost
+    if (attackingSoldiers > defendingSoldiers) {
+      // Attacker wins: defender loses tile and some population
+      targetTile.ownerId = attackingPlayerId;
+      targetTile.population = attackingSoldiers - defendingSoldiers; // Remaining attacking soldiers take over
+      defendingPlayer.population = Math.max(0, defendingPlayer.population - defendingSoldiers); // Defending player loses soldiers
+      attackingPlayer.population = Math.max(0, attackingPlayer.population - defendingSoldiers); // Attacking player loses soldiers
+      return { success: true, data: { message: `Player ${attackingPlayer.username} captured tile ${targetTileId} from ${defendingPlayer.username}` } };
+    } else if (defendingSoldiers > attackingSoldiers) {
+      // Defender wins: attacker loses some population
+      attackingPlayer.population = Math.max(0, attackingPlayer.population - attackingSoldiers); // Attacking player loses all attacking soldiers
+      targetTile.population = defendingSoldiers - attackingSoldiers; // Remaining defending soldiers
+      return { success: false, error: `Player ${defendingPlayer.username} defended tile ${targetTileId} against ${attackingPlayer.username}` };
+    } else {
+      // Draw: both lose all attacking/defending soldiers
+      attackingPlayer.population = Math.max(0, attackingPlayer.population - attackingSoldiers);
+      targetTile.population = 0; // All defending soldiers lost
+      targetTile.ownerId = undefined; // Tile becomes neutral
+      return { success: true, data: { message: `Combat on tile ${targetTileId} was a draw. Tile is now neutral.` } };
+    }
+  }
+
+
+
+
+  private getTilesInRadius(centerTileId: number, radius: number): number[] {
+    const tilesInRadius: Set<number> = new Set();
+    const queue: { tileId: number; distance: number }[] = [{ tileId: centerTileId, distance: 0 }];
+    const visited: Set<number> = new Set();
+
+    while (queue.length > 0) {
+      const { tileId, distance } = queue.shift()!;
+
+      if (visited.has(tileId)) continue;
+      visited.add(tileId);
+
+      if (distance <= radius) {
+        tilesInRadius.add(tileId);
+        const adjacent = this.adjacencyMap.get(tileId) || [];
+        for (const adjTileId of adjacent) {
+          if (!visited.has(adjTileId)) {
+            queue.push({ tileId: adjTileId, distance: distance + 1 });
+          }
+        }
+      }
+    }
+    return Array.from(tilesInRadius);
+  }
+
+
+
+
+  createAlliance(playerId: string, name: string, isPublic: boolean): ActionResult {
+    const player = this.players.get(playerId);
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+    if (player.allianceId) {
+      return { success: false, error: 'Player is already in an alliance' };
+    }
+    const allianceId = `alliance_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const alliance: Alliance = {
+      id: allianceId,
+      name,
+      leaderId: playerId,
+      memberIds: [playerId],
+      isPublic,
+    };
+    this.alliances.set(allianceId, alliance);
+    player.allianceId = allianceId;
+    return { success: true, data: { alliance } };
+  }
+
+
+
+
+  joinAlliance(playerId: string, allianceId: string): ActionResult {
+    const player = this.players.get(playerId);
+    const alliance = this.alliances.get(allianceId);
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+    if (!alliance) {
+      return { success: false, error: 'Alliance not found' };
+    }
+    if (player.allianceId) {
+      return { success: false, error: 'Player is already in an alliance' };
+    }
+    if (!alliance.isPublic) {
+      return { success: false, error: 'Alliance is private' };
+    }
+    alliance.memberIds.push(playerId);
+    player.allianceId = allianceId;
+    return { success: true, data: { alliance } };
+  }
+
+
+
+
+  leaveAlliance(playerId: string): ActionResult {
+    const player = this.players.get(playerId);
+    if (!player || !player.allianceId) {
+      return { success: false, error: "Player not in an alliance" };
+    }
+    const alliance = this.alliances.get(player.allianceId);
+    if (!alliance) {
+      return { success: false, error: "Alliance not found" };
+    }
+
+    alliance.memberIds = alliance.memberIds.filter((id) => id !== playerId);
+    player.allianceId = undefined;
+
+    // If the leader leaves, assign a new leader or disband the alliance
+    if (alliance.leaderId === playerId) {
+      if (alliance.memberIds.length > 0) {
+        alliance.leaderId = alliance.memberIds[0]; // Assign first member as new leader
+      } else {
+        this.alliances.delete(alliance.id); // Disband if no members left
+      }
+    }
+    return { success: true, data: { alliance } };
+  }
+
+
+
+
+  kickFromAlliance(leaderId: string, memberId: string): ActionResult {
+    const leader = this.players.get(leaderId);
+    const member = this.players.get(memberId);
+    if (!leader || !member) {
+      return { success: false, error: "Player not found" };
+    }
+    if (!leader.allianceId || leader.allianceId !== member.allianceId) {
+      return { success: false, error: "Leader and member are not in the same alliance" };
+    }
+    const alliance = this.alliances.get(leader.allianceId);
+    if (!alliance) {
+      return { success: false, error: "Alliance not found" };
+    }
+    if (alliance.leaderId !== leaderId) {
+      return { success: false, error: "Only the alliance leader can kick members" };
+    }
+
+    alliance.memberIds = alliance.memberIds.filter((id) => id !== memberId);
+    member.allianceId = undefined;
+    return { success: true, data: { alliance } };
+  }
+
+
