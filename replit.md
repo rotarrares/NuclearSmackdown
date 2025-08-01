@@ -2,7 +2,15 @@
 
 ## Overview
 
-OpenFront.io is a web-based MMO real-time strategy game built around a 3D interactive globe. Players spawn on a spherical world map composed of hexagonal and pentagonal tiles, expanding their territory, managing population and resources, building cities and ports, forming alliances, and competing for global dominance. The game features a unique spherical tile grid system based on geodesic polyhedron geometry, providing seamless coverage of the entire globe without gaps or distortions.
+OpenFront.io is a web-based MMO real-time strategy game built around a 3D interactive globe. Players spawn on a spherical world map composed of triangular tiles arranged in a geodesic pattern, expanding their territory, managing population and resources, and competing for global dominance. The game features real-time multiplayer interaction with WebSocket communication and a Three.js-powered 3D globe interface.
+
+## Recent Changes (January 2025)
+
+- **Globe Rendering**: Fixed black tile rendering issue by switching to individual tile meshes with proper materials
+- **Tile Interaction**: Implemented precise tile hover and click detection using separate mesh components
+- **Territory Expansion**: Fixed server-side adjacency checks to allow proper territory expansion
+- **Visual Feedback**: Added hover indicators and proper color coding for tile ownership
+- **Performance**: Optimized to ~80 manageable triangular tiles for smooth interaction
 
 ## User Preferences
 
