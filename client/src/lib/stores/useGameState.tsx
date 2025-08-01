@@ -23,6 +23,7 @@ interface GameState {
     canBuildPort: boolean;
     position: { x: number; y: number };
   } | null;
+  alerts: { message: string; type: 'info' | 'warning' | 'error'; id: string }[];
   
   // Game time
   gameTime: number;
@@ -38,6 +39,8 @@ interface GameState {
   removeMissile: (missileId: string) => void;
   setHoveredTile: (tile: TileData | null) => void;
   setBuildingOptions: (options: { tileId: number; canBuildPort: boolean; position: { x: number; y: number }; } | null) => void;
+  addAlert: (message: string, type: 'info' | 'warning' | 'error') => void;
+  removeAlert: (id: string) => void;
   updateGameTime: (time: number) => void;
   
   // Bulk updates from server
@@ -57,6 +60,7 @@ export const useGameState = create<GameState>()(
     missiles: new Map(),
     hoveredTile: null,
     buildingOptions: null,
+    alerts: [],
     gameTime: 0,
     
     setGamePhase: (phase) => set({ gamePhase: phase }),
@@ -132,7 +136,14 @@ export const useGameState = create<GameState>()(
     setBuildingOptions: (options) => set({ buildingOptions: options }),
     
     updateGameTime: (time) => set({ gameTime: time }),
-    
+
+    addAlert: (message, type) => set((state) => ({
+      alerts: [...state.alerts, { message, type, id: Date.now().toString() }],
+    })),
+    removeAlert: (id) => set((state) => ({
+      alerts: state.alerts.filter((alert) => alert.id !== id),
+    })),
+
     updateGameState: (state) => set(() => {
       const newPlayers = new Map();
       state.players.forEach(player => {
@@ -169,7 +180,7 @@ useGameState.subscribe(
     
     // Calculate population growth (cities boost growth)
     const baseGrowth = ownedTiles.length * 0.01;
-    const cityBonus = ownedTiles.filter(t => t.hasCity).length * 0.05;
+    const cityBonus = ownedTiles.filter(t => t.structureType === 'city').length * 0.05;
     const populationGrowth = baseGrowth + cityBonus;
     
     // Calculate gold generation (workers generate gold)
@@ -183,3 +194,5 @@ useGameState.subscribe(
     });
   }
 );
+
+

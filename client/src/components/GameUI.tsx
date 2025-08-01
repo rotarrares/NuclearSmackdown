@@ -1,6 +1,7 @@
 import { useGameState } from "../lib/stores/useGameState";
 import { useMultiplayer } from "../lib/stores/useMultiplayer";
 import TileInfo from "./TileInfo";
+import Leaderboard from "./Leaderboard";
 
 const GameUI = () => {
   const { 
@@ -157,6 +158,9 @@ const GameUI = () => {
 
       {/* Tile Information Panel */}
       {hoveredTile && <TileInfo tile={hoveredTile} />}
+
+      {/* Leaderboard */}
+      <Leaderboard />
 
       {/* Instructions */}
       <div style={{

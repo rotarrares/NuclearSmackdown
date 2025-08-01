@@ -5,6 +5,7 @@ import "@fontsource/inter";
 
 import Globe from "./components/Globe";
 import GameUI from "./components/GameUI";
+import AlertsDisplay from "./components/ui/AlertsDisplay";
 import { BuildingOptions } from "./components/BuildingOptions";
 import { useGameState } from "./lib/stores/useGameState";
 import { useMultiplayer } from "./lib/stores/useMultiplayer";
@@ -64,6 +65,7 @@ function App() {
 
       {/* Game UI Overlay */}
       <GameUI />
+      <AlertsDisplay />
       
       {/* Building Options Popup */}
       {buildingOptions && (
