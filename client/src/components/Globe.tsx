@@ -67,9 +67,9 @@ const MissileRenderer = ({ missile, curve, validPoints }: {
   
   return (
     <group ref={meshRef}>
-      {/* Main trajectory tube - optimized */}
+      {/* Main trajectory tube - thinner */}
       <mesh>
-        <tubeGeometry args={[curve, 32, 0.003, 6, false]} />
+        <tubeGeometry args={[curve, 32, 0.001, 6, false]} />
         <meshBasicMaterial
           color={0xffffff}
           transparent={true}
@@ -77,33 +77,21 @@ const MissileRenderer = ({ missile, curve, validPoints }: {
         />
       </mesh>
       
-      {/* Animated missile warhead - optimized */}
+      {/* Animated missile warhead - 3 times smaller */}
       <mesh name="warhead">
-        <sphereGeometry args={[0.015, 8, 8]} />
+        <sphereGeometry args={[0.005, 8, 8]} />
         <meshBasicMaterial color={0xff2222} />
       </mesh>
       
-      {/* Reduced glow halo for performance */}
+      {/* Reduced glow halo - 3 times smaller */}
       <mesh name="glow">
-        <sphereGeometry args={[0.025, 6, 6]} />
+        <sphereGeometry args={[0.008, 6, 6]} />
         <meshBasicMaterial 
           color={0xff4444}
           transparent={true}
           opacity={0.2}
         />
       </mesh>
-      
-      {/* Fewer trajectory marker points for performance */}
-      {validPoints.filter((_, i) => i % 6 === 0).map((point: THREE.Vector3, index: number) => (
-        <mesh key={`marker-${missile.id}-${index}`} position={point}>
-          <sphereGeometry args={[0.004, 4, 4]} />
-          <meshBasicMaterial 
-            color={0xffff44}
-            transparent={true}
-            opacity={0.4}
-          />
-        </mesh>
-      ))}
       
       {/* Launch flash effect */}
       {elapsedTime < 200 && (
