@@ -310,19 +310,38 @@ const Globe = () => {
       {/* Missile trajectories */}
       {Array.from(missiles.values()).map((missile) => {
         if (!missile.trajectory || missile.trajectory.length === 0) return null;
+        
+        console.log(`Rendering missile ${missile.id} trajectory:`, missile.trajectory.slice(0, 3));
        
         const points = missile.trajectory.map((point: [number, number, number]) => new THREE.Vector3(...point));
-        const curve = new THREE.CatmullRomCurve3(points);
+        
+        // Validate points
+        const validPoints = points.filter(p => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.z));
+        if (validPoints.length === 0) {
+          console.error(`No valid points for missile ${missile.id}`);
+          return null;
+        }
+        
+        const curve = new THREE.CatmullRomCurve3(validPoints);
        
         return (
-          <mesh key={`missile-${missile.id}`}>
-            <tubeGeometry args={[curve, 64, 0.002, 8, false]} />
-            <meshBasicMaterial
-              color={0xffffff}
-              transparent={true}
-              opacity={0.8}
-            />
-          </mesh>
+          <group key={`missile-${missile.id}`}>
+            <mesh>
+              <tubeGeometry args={[curve, 64, 0.01, 8, false]} />
+              <meshBasicMaterial
+                color={0xffffff}
+                transparent={false}
+                opacity={1.0}
+              />
+            </mesh>
+            {/* Add visible marker spheres */}
+            {validPoints.slice(0, 10).map((point, index) => (
+              <mesh key={`marker-${missile.id}-${index}`} position={point}>
+                <sphereGeometry args={[0.02, 8, 8]} />
+                <meshBasicMaterial color={0xff0000} />
+              </mesh>
+            ))}
+          </group>
         );
       })}
     </group>

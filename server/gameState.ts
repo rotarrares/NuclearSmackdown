@@ -387,25 +387,29 @@ export class GameState {
       };
     }
     player.gold -= missileCost;
-    // Generate missile trajectory along sphere surface
-    const fromTileData = this.tileData.find((t) => t.id === fromTileId);
-    const toTileData = this.tileData.find((t) => t.id === toTileId);
-    if (!fromTileData || !toTileData) {
-      return { success: false, error: "Tile data not found" };
-    }
-    // Ensure we have proper coordinate arrays
-    const fromCoords: [number, number, number] = [
-      fromTileData.center[0],
-      fromTileData.center[1], 
-      fromTileData.center[2]
-    ];
-    const toCoords: [number, number, number] = [
-      toTileData.center[0],
-      toTileData.center[1],
-      toTileData.center[2]
-    ];
+    // Generate simple test trajectory
+    console.log(`Creating missile from tile ${fromTileId} to tile ${toTileId}`);
     
-    const trajectory = this.calculateSphericalTrajectory(fromCoords, toCoords);
+    // Create a simple high-arc trajectory for testing
+    const trajectory: [number, number, number][] = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      const height = Math.sin(t * Math.PI) * 2.0; // High arc
+      const radius = 1.0 + height;
+      
+      // Simple interpolation between two points on sphere
+      const fromAngle = (fromTileId % 360) * Math.PI / 180;
+      const toAngle = (toTileId % 360) * Math.PI / 180;
+      const currentAngle = fromAngle + t * (toAngle - fromAngle);
+      
+      const x = Math.cos(currentAngle) * radius;
+      const y = Math.sin(currentAngle) * radius * 0.5;
+      const z = Math.sin(currentAngle) * radius * 0.3;
+      
+      trajectory.push([x, y, z]);
+    }
+    
+    console.log(`Generated test trajectory with ${trajectory.length} points:`, trajectory.slice(0, 2));
     const travelTime = 3000; // 3 seconds travel time
     const missile: Missile = {
       id: `missile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
