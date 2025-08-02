@@ -9,6 +9,7 @@ export interface Player {
   gold: number;
   population: number;
   workerRatio: number; // 0 = all soldiers, 1 = all workers
+  troopDeployment: number; // 0 = no troops deployed, 1 = all soldiers deployed
   
   // Territory
   spawnTileId: number;
@@ -75,6 +76,13 @@ export interface AdjustWorkerRatioMessage extends GameMessage {
   type: 'adjust_worker_ratio';
   data: {
     ratio: number;
+  };
+}
+
+export interface AdjustTroopDeploymentMessage extends GameMessage {
+  type: 'adjust_troop_deployment';
+  data: {
+    deployment: number;
   };
 }
 

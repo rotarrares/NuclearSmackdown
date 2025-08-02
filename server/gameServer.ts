@@ -100,6 +100,9 @@ export class GameServer {
       case "adjust_worker_ratio":
         this.handleAdjustWorkerRatio(ws, message.data);
         break;
+      case "adjust_troop_deployment":
+        this.handleAdjustTroopDeployment(ws, message.data);
+        break;
       case "launch_missile":
         this.handleLaunchMissile(ws, message.data);
         break;
@@ -267,6 +270,29 @@ export class GameServer {
       });
     } else {
       this.sendError(ws, result.error || "Cannot adjust worker ratio");
+    }
+  }
+
+  private handleAdjustTroopDeployment(ws: WebSocket, data: { deployment: number }) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, "Player not spawned");
+      return;
+    }
+
+    const result = this.gameState.adjustTroopDeployment(
+      connection.playerId,
+      data.deployment,
+    );
+    if (result.success) {
+      this.broadcast({
+        type: "player_updated",
+        data: {
+          player: this.gameState.getPlayer(connection.playerId),
+        },
+      });
+    } else {
+      this.sendError(ws, result.error || "Cannot adjust troop deployment");
     }
   }
 

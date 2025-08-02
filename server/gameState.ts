@@ -96,6 +96,7 @@ export class GameState {
       gold: 0,
       population: 3000,
       workerRatio: 0.2,
+      troopDeployment: 0.5,
       lastActive: Date.now(),
       lastPopulationGrowth: Date.now(),
     };
@@ -257,6 +258,19 @@ export class GameState {
       return { success: false, error: "Ratio must be between 0 and 1" };
     }
     player.workerRatio = ratio;
+    player.lastActive = Date.now();
+    return { success: true };
+  }
+
+  adjustTroopDeployment(playerId: string, deployment: number): ActionResult {
+    const player = this.players.get(playerId);
+    if (!player) {
+      return { success: false, error: "Player not found" };
+    }
+    if (deployment < 0 || deployment > 1) {
+      return { success: false, error: "Deployment must be between 0 and 1" };
+    }
+    player.troopDeployment = deployment;
     player.lastActive = Date.now();
     return { success: true };
   }

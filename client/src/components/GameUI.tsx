@@ -15,7 +15,8 @@ const GameUI = () => {
   const { 
     isConnected, 
     spawnPlayer,
-    adjustWorkerRatio 
+    adjustWorkerRatio,
+    adjustTroopDeployment 
   } = useMultiplayer();
 
   if (!isConnected) {
@@ -128,7 +129,7 @@ const GameUI = () => {
       }}>
         <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Population Management</h3>
         
-        <div style={{ marginBottom: '10px' }}>
+        <div style={{ marginBottom: '15px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
             <span>⚔️ Soldiers: {Math.floor(currentPlayer.population * currentPlayer.workerRatio)}</span>
             <span>🔨 Workers: {Math.floor(currentPlayer.population * (1 - currentPlayer.workerRatio))}</span>
@@ -150,9 +151,37 @@ const GameUI = () => {
           </div>
         </div>
 
+        <div style={{ marginBottom: '15px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+            <span>🎯 Troop Deployment</span>
+            <span>{Math.floor((currentPlayer.troopDeployment || 0) * 100)}%</span>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '14px' }}>
+            <span>🔒 Reserved: {Math.floor(currentPlayer.population * currentPlayer.workerRatio * (1 - (currentPlayer.troopDeployment || 0)))}</span>
+            <span>⚔️ Deployed: {Math.floor(currentPlayer.population * currentPlayer.workerRatio * (currentPlayer.troopDeployment || 0))}</span>
+          </div>
+          
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={currentPlayer.troopDeployment || 0}
+            onChange={(e) => adjustTroopDeployment(parseFloat(e.target.value))}
+            style={{ width: '100%' }}
+          />
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '5px' }}>
+            <span>Keep All</span>
+            <span>Deploy All</span>
+          </div>
+        </div>
+
         <div style={{ fontSize: '12px', opacity: 0.8 }}>
           <div>💰 Gold/sec: +{(currentPlayer.population * (1 - currentPlayer.workerRatio) * 0.1).toFixed(1)}</div>
           <div>👥 Pop Growth: +{(ownedTiles * 0.01).toFixed(2)}/sec</div>
+          <div>🎯 Available for combat: {Math.floor(currentPlayer.population * currentPlayer.workerRatio * (currentPlayer.troopDeployment || 0))}</div>
         </div>
       </div>
 
@@ -179,6 +208,7 @@ const GameUI = () => {
         <div>🔍 Scroll to zoom</div>
         <div>🎯 Click tiles to expand</div>
         <div>⚖️ Balance workers vs soldiers</div>
+        <div>🎯 Set troop deployment level</div>
       </div>
     </>
   );

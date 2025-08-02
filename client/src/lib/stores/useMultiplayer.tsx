@@ -15,6 +15,7 @@ interface MultiplayerState {
   selectTile: (tileId: number) => void;
   expandTerritory: (tileId: number) => void;
   adjustWorkerRatio: (ratio: number) => void;
+  adjustTroopDeployment: (deployment: number) => void;
   buildStructure: (tileId: number, structureType: 'city' | 'port' | 'missile_silo') => void;
   launchMissile: (fromTileId: number, toTileId: number) => void;
   
@@ -137,6 +138,21 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
     socket.send(JSON.stringify({
       type: 'adjust_worker_ratio',
       data: { ratio }
+    }));
+  },
+
+  adjustTroopDeployment: (deployment: number) => {
+    const { socket } = get();
+    const currentPlayer = useGameState.getState().currentPlayer;
+    if (!socket || !currentPlayer) return;
+    
+    // Update locally first for responsive UI
+    useGameState.getState().updatePlayer(currentPlayer.id, { troopDeployment: deployment });
+    
+    // Send to server
+    socket.send(JSON.stringify({
+      type: 'adjust_troop_deployment',
+      data: { deployment }
     }));
   },
 

@@ -24,6 +24,7 @@ export interface Player {
   gold: number;
   population: number;
   workerRatio: number; // 0-1, percentage of population that are workers (vs soldiers)
+  troopDeployment: number; // 0-1, percentage of soldiers to deploy for combat/expansion
   lastActive: number;
   allianceId?: string;
   lastPopulationGrowth: number;
@@ -54,6 +55,7 @@ export interface GameMessage {
     | "select_tile"
     | "expand_territory"
     | "adjust_worker_ratio"
+    | "adjust_troop_deployment"
     | "build_structure"
     | "launch_missile"
     | "create_alliance"
