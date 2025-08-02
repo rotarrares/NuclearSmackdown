@@ -17,12 +17,14 @@ export const BuildingOptions: React.FC<BuildingOptionsProps> = ({
   onClose,
   position
 }) => {
+  const safePosition = position || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  
   return (
     <div 
       className="fixed z-50 bg-gray-900 border border-gray-600 rounded-lg p-4 shadow-lg"
       style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
+        left: `${safePosition.x}px`,
+        top: `${safePosition.y}px`,
         transform: 'translate(-50%, -50%)'
       }}
     >

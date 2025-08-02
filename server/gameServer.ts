@@ -405,6 +405,34 @@ export class GameServer {
   private update() {
     // Update game state
     this.gameState.update();
+    
+    // Broadcast any conquest events that occurred for immediate feedback
+    const conquestEvents = this.gameState.getConquestEvents();
+    conquestEvents.forEach(event => {
+      if (event.type === 'territory_claimed') {
+        this.broadcast({
+          type: "territory_expanded",
+          data: {
+            tileId: event.tileId,
+            playerId: event.playerId,
+            population: event.population
+          }
+        });
+      }
+      // Send conquest progress updates for real-time troop depletion feedback
+      const player = this.gameState.getPlayer(event.playerId);
+      if (player) {
+        this.broadcast({
+          type: "conquest_progress",
+          data: {
+            playerId: event.playerId,
+            conquestTroops: player.conquestTroops,
+            isConquering: player.isConquering
+          }
+        });
+      }
+    });
+    
     // Broadcast frequent updates for better synchronization
     if (this.gameState.getGameTime() % 10 == 0) {
       // Every 1 second (10 ticks at 100ms intervals)

@@ -29,6 +29,7 @@ export class GameState {
   private adjacencyMap: Map<number, number[]> = new Map();
   private globeGeometry: GlobeGeometry;
   private tileData: TileData[];
+  public conquestEvents: any[] = []; // Store conquest events for broadcasting
 
   constructor() {
     this.gameStartTime = Date.now();
@@ -351,11 +352,11 @@ export class GameState {
     return { success: true };
   }
 
-  private processConquest(player: Player): void {
+  private processConquest(player: Player): any {
     if (!player.isConquering || player.conquestTroops <= 0) {
       player.isConquering = false;
       player.conquestTroops = 0;
-      return;
+      return null;
     }
 
     // Deplete troops based on terrain difficulty every 100ms
@@ -443,7 +444,7 @@ export class GameState {
       // No more tiles to conquer
       player.isConquering = false;
       player.conquestTroops = 0;
-      return;
+      return null;
     }
 
     // Weight tiles by adjacent owned count (more adjacent = higher chance)
@@ -459,7 +460,17 @@ export class GameState {
       // Claim the tile
       targetTile.ownerId = player.id;
       targetTile.population = Math.floor(player.population / 10); // Some population moves to new tile
+      
+      // Broadcast territory claim event for real-time updates
+      return {
+        type: 'territory_claimed',
+        tileId: randomCandidate.tileId,
+        playerId: player.id,
+        population: targetTile.population
+      };
     }
+    
+    return null;
   }
 
   buildStructure(
@@ -524,14 +535,10 @@ export class GameState {
 
       // Process conquest
       if (player.isConquering) {
-        // Apply troop losses based on time
-        const troopLossPerSecond = 50; // Base loss rate for unclaimed grass
-        const troopLoss = troopLossPerSecond * (deltaTime / 1000);
-        player.conquestTroops = Math.max(0, player.conquestTroops - troopLoss);
-        
-        // Try to conquer tiles every 300ms
-        if (now % 300 < deltaTime) {
-          this.processConquest(player);
+        const conquestEvent = this.processConquest(player);
+        if (conquestEvent) {
+          // Store conquest events for broadcasting
+          this.conquestEvents.push({ ...conquestEvent, playerId: player.id });
         }
         
         // Stop conquest if no troops left
@@ -582,6 +589,13 @@ export class GameState {
 
   getGameTime(): number {
     return Date.now() - this.gameStartTime;
+  }
+
+  // Get and clear conquest events for broadcasting
+  getConquestEvents(): any[] {
+    const events = [...this.conquestEvents];
+    this.conquestEvents = [];
+    return events;
   }
 
   launchMissile(

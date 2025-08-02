@@ -258,6 +258,40 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
           console.log(`Missile ${impactData.missileId} impacted at tile ${impactData.tileId}`);
           break;
           
+        case 'conquest_started':
+          console.log('Conquest started for player:', message.data.playerId);
+          // Update player conquest status immediately
+          if (message.data.playerId && message.data.conquestTroops !== undefined) {
+            const player = gameState.players.get(message.data.playerId);
+            if (player) {
+              gameState.updatePlayer(message.data.playerId, { 
+                isConquering: true, 
+                conquestTroops: message.data.conquestTroops 
+              });
+            }
+          }
+          break;
+          
+        case 'conquest_cancelled':
+          console.log('Conquest cancelled for player:', message.data.playerId);
+          if (message.data.playerId) {
+            gameState.updatePlayer(message.data.playerId, { 
+              isConquering: false, 
+              conquestTroops: 0 
+            });
+          }
+          break;
+          
+        case 'conquest_progress':
+          // Real-time conquest progress updates
+          if (message.data.playerId && message.data.conquestTroops !== undefined) {
+            gameState.updatePlayer(message.data.playerId, { 
+              conquestTroops: message.data.conquestTroops,
+              isConquering: message.data.isConquering
+            });
+          }
+          break;
+          
         case 'error':
           console.error('Game error:', message.data.message);
           break;
