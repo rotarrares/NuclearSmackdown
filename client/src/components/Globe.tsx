@@ -151,6 +151,11 @@ const Globe = () => {
     if (newTrackedSounds.size !== missilesSoundTracked.size) {
       setMissilesSoundTracked(newTrackedSounds);
     }
+    
+    // Clean up old missile sound tracking
+    if (missiles.size === 0 && missilesSoundTracked.size > 0) {
+      setMissilesSoundTracked(new Set());
+    }
   });
 
   // Handle mouse interactions
@@ -339,13 +344,26 @@ const Globe = () => {
 
       {/* Missile trajectories */}
       {Array.from(missiles.values()).map((missile) => {
-        if (!missile.trajectory || missile.trajectory.length === 0) return null;
+        console.log(`Rendering missile ${missile.id}:`, missile);
+        
+        if (!missile || !missile.trajectory || missile.trajectory.length === 0) {
+          console.log(`Skipping missile ${missile?.id} - no trajectory`);
+          return null;
+        }
        
-        const points = missile.trajectory.map((point: [number, number, number]) => new THREE.Vector3(...point));
+        const points = missile.trajectory.map((point: [number, number, number]) => {
+          if (!point || point.length !== 3) return null;
+          return new THREE.Vector3(point[0], point[1], point[2]);
+        }).filter(p => p !== null) as THREE.Vector3[];
         
         // Validate points
-        const validPoints = points.filter(p => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.z));
-        if (validPoints.length === 0) return null;
+        const validPoints = points.filter(p => p && !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.z));
+        if (validPoints.length === 0) {
+          console.log(`No valid points for missile ${missile.id}`);
+          return null;
+        }
+        
+        console.log(`Missile ${missile.id} has ${validPoints.length} valid points`);
         
         const curve = new THREE.CatmullRomCurve3(validPoints);
         
@@ -370,11 +388,11 @@ const Globe = () => {
             {/* Animated missile warhead */}
             <mesh position={currentPosition}>
               <sphereGeometry args={[0.015, 8, 8]} />
-              <meshBasicMaterial color={0xff4444} emissive={0x442222} />
+              <meshBasicMaterial color={0xff4444} />
             </mesh>
             
             {/* Trajectory marker points */}
-            {validPoints.slice(0, validPoints.length).filter((_, i) => i % 3 === 0).map((point, index) => (
+            {validPoints.slice(0, validPoints.length).filter((_, i) => i % 3 === 0).map((point: THREE.Vector3, index: number) => (
               <mesh key={`marker-${missile.id}-${index}`} position={point}>
                 <sphereGeometry args={[0.005, 6, 6]} />
                 <meshBasicMaterial 
