@@ -453,7 +453,7 @@ export class GameState {
     const trajectory: [number, number, number][] = [];
     const steps = 20; // Number of points along the trajectory
     
-    console.log(`Calculating trajectory from [${from.join(',')}] to [${to.join(',')}]`);
+    console.log(`Calculating trajectory from:`, from, `to:`, to);
     
     // Ensure we have valid coordinates
     if (!from || !to || from.length !== 3 || to.length !== 3) {
