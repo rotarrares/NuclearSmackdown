@@ -103,6 +103,12 @@ export class GameServer {
       case "adjust_troop_deployment":
         this.handleAdjustTroopDeployment(ws, message.data);
         break;
+      case "start_conquest":
+        this.handleStartConquest(ws, message.data);
+        break;
+      case "cancel_conquest":
+        this.handleCancelConquest(ws, message.data);
+        break;
       case "launch_missile":
         this.handleLaunchMissile(ws, message.data);
         break;
@@ -293,6 +299,59 @@ export class GameServer {
       });
     } else {
       this.sendError(ws, result.error || "Cannot adjust troop deployment");
+    }
+  }
+
+  private handleStartConquest(ws: WebSocket, data: { tileId: number }) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, "Player not spawned");
+      return;
+    }
+
+    const result = this.gameState.startConquest(connection.playerId, data.tileId);
+    if (result.success) {
+      this.broadcast({
+        type: "conquest_started",
+        data: {
+          playerId: connection.playerId,
+          conquestTroops: result.data?.conquestTroops,
+        },
+      });
+      this.broadcast({
+        type: "player_updated",
+        data: {
+          player: this.gameState.getPlayer(connection.playerId),
+        },
+      });
+    } else {
+      this.sendError(ws, result.error || "Cannot start conquest");
+    }
+  }
+
+  private handleCancelConquest(ws: WebSocket, data: {}) {
+    const connection = this.connections.get(ws);
+    if (!connection?.playerId) {
+      this.sendError(ws, "Player not spawned");
+      return;
+    }
+
+    const result = this.gameState.cancelConquest(connection.playerId);
+    if (result.success) {
+      this.broadcast({
+        type: "conquest_cancelled",
+        data: {
+          playerId: connection.playerId,
+        },
+      });
+      this.broadcast({
+        type: "player_updated",
+        data: {
+          player: this.gameState.getPlayer(connection.playerId),
+        },
+      });
+    } else {
+      this.sendError(ws, result.error || "Cannot cancel conquest");
     }
   }
 

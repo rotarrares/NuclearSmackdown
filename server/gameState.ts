@@ -97,6 +97,8 @@ export class GameState {
       population: 3000,
       workerRatio: 0.2,
       troopDeployment: 0.5,
+      conquestTroops: 0,
+      isConquering: false,
       lastActive: Date.now(),
       lastPopulationGrowth: Date.now(),
     };
@@ -275,6 +277,132 @@ export class GameState {
     return { success: true };
   }
 
+  startConquest(playerId: string, tileId: number): ActionResult {
+    const player = this.players.get(playerId);
+    const tile = this.tiles.get(tileId);
+    
+    if (!player) {
+      return { success: false, error: "Player not found" };
+    }
+    if (!tile) {
+      return { success: false, error: "Tile not found" };
+    }
+    
+    // Check if tile is unclaimed
+    if (tile.ownerId) {
+      return { success: false, error: "Tile is already claimed" };
+    }
+    
+    // Check if player is already conquering
+    if (player.isConquering) {
+      return { success: false, error: "Already conquering territory" };
+    }
+    
+    // Calculate available troops for conquest
+    const soldiers = Math.floor(player.population * player.workerRatio);
+    const deployedTroops = Math.floor(soldiers * player.troopDeployment);
+    
+    if (deployedTroops < 50) {
+      return { success: false, error: "Need at least 50 deployed troops to start conquest" };
+    }
+    
+    // Check if adjacent to player territory
+    if (!this.isAdjacentToOwnTerritory(playerId, tileId)) {
+      return { success: false, error: "Tile not adjacent to your territory" };
+    }
+    
+    // Start conquest
+    player.conquestTroops = deployedTroops;
+    player.isConquering = true;
+    player.lastActive = Date.now();
+    
+    return { success: true, data: { conquestTroops: deployedTroops } };
+  }
+
+  cancelConquest(playerId: string): ActionResult {
+    const player = this.players.get(playerId);
+    if (!player) {
+      return { success: false, error: "Player not found" };
+    }
+    
+    player.conquestTroops = 0;
+    player.isConquering = false;
+    player.lastActive = Date.now();
+    
+    return { success: true };
+  }
+
+  private processConquest(player: Player): void {
+    if (!player.isConquering || player.conquestTroops <= 0) {
+      player.isConquering = false;
+      player.conquestTroops = 0;
+      return;
+    }
+
+    // Get all owned tiles by this player
+    const ownedTiles = Array.from(this.tiles.values()).filter(
+      tile => tile.ownerId === player.id
+    );
+
+    // Find all unclaimed adjacent tiles
+    const candidateTiles: { tileId: number; adjacentOwned: number; terrainType: string }[] = [];
+    
+    ownedTiles.forEach(ownedTile => {
+      const adjacentTileIds = this.adjacencyMap.get(ownedTile.id) || [];
+      adjacentTileIds.forEach(adjTileId => {
+        const adjTile = this.tiles.get(adjTileId);
+        if (adjTile && !adjTile.ownerId) {
+          // Count how many adjacent tiles are owned by this player
+          const adjToAdj = this.adjacencyMap.get(adjTileId) || [];
+          const adjacentOwned = adjToAdj.filter(id => {
+            const tile = this.tiles.get(id);
+            return tile?.ownerId === player.id;
+          }).length;
+          
+          candidateTiles.push({
+            tileId: adjTileId,
+            adjacentOwned,
+            terrainType: adjTile.terrainType
+          });
+        }
+      });
+    });
+
+    // Remove duplicates
+    const uniqueCandidates = candidateTiles.reduce((acc, current) => {
+      const existing = acc.find(item => item.tileId === current.tileId);
+      if (!existing) {
+        acc.push(current);
+      } else if (current.adjacentOwned > existing.adjacentOwned) {
+        // Keep the one with more adjacent owned tiles
+        existing.adjacentOwned = current.adjacentOwned;
+      }
+      return acc;
+    }, [] as typeof candidateTiles);
+
+    if (uniqueCandidates.length === 0) {
+      // No more tiles to conquer
+      player.isConquering = false;
+      player.conquestTroops = 0;
+      return;
+    }
+
+    // Weight tiles by adjacent owned count (more adjacent = higher chance)
+    const weightedCandidates = uniqueCandidates.flatMap(candidate => 
+      Array(candidate.adjacentOwned + 1).fill(candidate)
+    );
+
+    // Try to claim a random weighted tile
+    const randomCandidate = weightedCandidates[Math.floor(Math.random() * weightedCandidates.length)];
+    const targetTile = this.tiles.get(randomCandidate.tileId);
+    
+    if (targetTile && !targetTile.ownerId) {
+      // Claim the tile
+      targetTile.ownerId = player.id;
+      targetTile.population = Math.floor(player.population / 10); // Some population moves to new tile
+    }
+  }
+
   buildStructure(
     playerId: string,
     tileId: number,
@@ -334,6 +462,24 @@ export class GameState {
       const goldPerSecond = workers * 0.1;
       const goldGrowth = goldPerSecond * (deltaTime / 1000);
       player.gold += goldGrowth;
+
+      // Process conquest
+      if (player.isConquering) {
+        // Apply troop losses based on time
+        const troopLossPerSecond = 50; // Base loss rate for unclaimed grass
+        const troopLoss = troopLossPerSecond * (deltaTime / 1000);
+        player.conquestTroops = Math.max(0, player.conquestTroops - troopLoss);
+        
+        // Try to conquer tiles every 300ms
+        if (now % 300 < deltaTime) {
+          this.processConquest(player);
+        }
+        
+        // Stop conquest if no troops left
+        if (player.conquestTroops <= 0) {
+          player.isConquering = false;
+        }
+      }
 
       // Distribute population to tiles
       if (ownedTiles.length > 0) {

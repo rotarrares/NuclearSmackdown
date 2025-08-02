@@ -16,7 +16,8 @@ const GameUI = () => {
     isConnected, 
     spawnPlayer,
     adjustWorkerRatio,
-    adjustTroopDeployment 
+    adjustTroopDeployment,
+    cancelConquest
   } = useMultiplayer();
 
   if (!isConnected) {
@@ -178,6 +179,38 @@ const GameUI = () => {
           </div>
         </div>
 
+        {/* Conquest Status */}
+        {currentPlayer.isConquering && (
+          <div style={{ 
+            marginBottom: '15px',
+            padding: '10px',
+            backgroundColor: 'rgba(255, 165, 0, 0.2)',
+            border: '1px solid #ffa500',
+            borderRadius: '5px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>⚔️ Conquering Territory</span>
+              <button
+                onClick={() => cancelConquest()}
+                style={{
+                  background: '#ff4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '3px',
+                  padding: '2px 6px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ fontSize: '14px', marginTop: '5px' }}>
+              Troops: {currentPlayer.conquestTroops || 0}
+            </div>
+          </div>
+        )}
+
         <div style={{ fontSize: '12px', opacity: 0.8 }}>
           <div>💰 Gold/sec: +{(currentPlayer.population * (1 - currentPlayer.workerRatio) * 0.1).toFixed(1)}</div>
           <div>👥 Pop Growth: +{(ownedTiles * 0.01).toFixed(2)}/sec</div>
@@ -206,9 +239,10 @@ const GameUI = () => {
         <h4 style={{ margin: '0 0 8px 0' }}>Controls</h4>
         <div>🖱️ Drag to rotate globe</div>
         <div>🔍 Scroll to zoom</div>
-        <div>🎯 Click tiles to expand</div>
+        <div>🎯 Click unclaimed tiles to conquer</div>
         <div>⚖️ Balance workers vs soldiers</div>
         <div>🎯 Set troop deployment level</div>
+        <div>⚔️ Conquest uses deployed troops</div>
       </div>
     </>
   );

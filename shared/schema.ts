@@ -25,6 +25,8 @@ export interface Player {
   population: number;
   workerRatio: number; // 0-1, percentage of population that are workers (vs soldiers)
   troopDeployment: number; // 0-1, percentage of soldiers to deploy for combat/expansion
+  conquestTroops: number; // Number of troops currently allocated to conquering
+  isConquering: boolean; // Whether player is actively conquering
   lastActive: number;
   allianceId?: string;
   lastPopulationGrowth: number;
@@ -56,6 +58,8 @@ export interface GameMessage {
     | "expand_territory"
     | "adjust_worker_ratio"
     | "adjust_troop_deployment"
+    | "start_conquest"
+    | "cancel_conquest"
     | "build_structure"
     | "launch_missile"
     | "create_alliance"

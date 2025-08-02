@@ -11,6 +11,10 @@ export interface Player {
   workerRatio: number; // 0 = all soldiers, 1 = all workers
   troopDeployment: number; // 0 = no troops deployed, 1 = all soldiers deployed
   
+  // Conquest
+  conquestTroops: number; // Troops currently allocated to conquering
+  isConquering: boolean; // Whether player is actively conquering
+  
   // Territory
   spawnTileId: number;
   
@@ -84,6 +88,18 @@ export interface AdjustTroopDeploymentMessage extends GameMessage {
   data: {
     deployment: number;
   };
+}
+
+export interface StartConquestMessage extends GameMessage {
+  type: 'start_conquest';
+  data: {
+    tileId: number;
+  };
+}
+
+export interface CancelConquestMessage extends GameMessage {
+  type: 'cancel_conquest';
+  data: {};
 }
 
 // Server response types

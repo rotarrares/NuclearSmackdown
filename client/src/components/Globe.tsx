@@ -136,7 +136,7 @@ const Globe = () => {
     setHoveredTile,
   } = useGameState();
 
-  const { selectTile, buildStructure, launchMissile } = useMultiplayer();
+  const { selectTile, buildStructure, launchMissile, startConquest } = useMultiplayer();
   const { playMissile } = useAudio();
 
   const [isHovering, setIsHovering] = useState(false);
@@ -365,9 +365,9 @@ const Globe = () => {
         return;
       }
 
-      // If tile is unowned or we want to expand, try to claim it
+      // If tile is unowned, start conquest
       if (!gameStateTile?.ownerId) {
-        selectTile(hoveredTile.id);
+        startConquest(hoveredTile.id);
       } else if (gameStateTile.ownerId === currentPlayer.id) {
         // Show building options for owned tiles - use game state store
         useGameState.getState().setBuildingOptions({

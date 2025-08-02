@@ -156,6 +156,26 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
     }));
   },
 
+  startConquest: (tileId: number) => {
+    const { socket } = get();
+    if (!socket) return;
+    
+    socket.send(JSON.stringify({
+      type: 'start_conquest',
+      data: { tileId }
+    }));
+  },
+
+  cancelConquest: () => {
+    const { socket } = get();
+    if (!socket) return;
+    
+    socket.send(JSON.stringify({
+      type: 'cancel_conquest',
+      data: {}
+    }));
+  },
+
   buildStructure: (tileId: number, structureType: 'city' | 'port' | 'missile_silo') => {
     const { socket } = get();
     if (!socket) return;
