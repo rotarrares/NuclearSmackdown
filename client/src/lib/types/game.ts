@@ -23,7 +23,10 @@ export interface GameTile {
   ownerId?: string;
   
   // Structures
-  structureType?: 'city' | 'port' | 'missile_silo';
+  structureType?: 'city' | 'port' | 'missile_silo' | 'base_hq';
+  
+  // Nuclear effects
+  isIrradiated?: boolean;
   
   // Population on this tile
   population: number;

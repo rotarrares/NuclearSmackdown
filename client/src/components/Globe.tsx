@@ -327,19 +327,18 @@ const Globe = () => {
           <group key={`missile-group-${missile.id}`}>
             {/* Use a thick white tube for better visibility */}
             <mesh>
-              <tubeGeometry args={[new THREE.CatmullRomCurve3(points), 64, 0.005, 8, false]} />
+              <tubeGeometry args={[new THREE.CatmullRomCurve3(points), 64, 0.008, 8, false]} />
               <meshBasicMaterial
                 color={0xffffff}
-                transparent={true}
-                opacity={0.9}
-                side={THREE.DoubleSide}
+                transparent={false}
+                opacity={1.0}
               />
             </mesh>
-            {/* Add trajectory points as small spheres for debugging */}
-            {points.slice(0, 5).map((point, index) => (
+            {/* Add bright trajectory points for visibility */}
+            {points.slice(0, 10).map((point: THREE.Vector3, index: number) => (
               <mesh key={`point-${missile.id}-${index}`} position={point}>
-                <sphereGeometry args={[0.003, 8, 8]} />
-                <meshBasicMaterial color={0xff0000} />
+                <sphereGeometry args={[0.005, 8, 8]} />
+                <meshBasicMaterial color={0xffff00} />
               </mesh>
             ))}
           </group>

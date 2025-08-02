@@ -438,8 +438,11 @@ export class GameState {
     console.log(
       `GLOBAL WARNING: Nuclear missile impact at tile ${missile.toTileId}!`,
     );
-    // Remove missile
-    this.missiles.delete(missileId);
+    // Keep missile in state for 3 more seconds to show trajectory after impact
+    setTimeout(() => {
+      this.missiles.delete(missileId);
+    }, 3000);
+    
     return { success: true, data: { tile: targetTile } };
   }
 
