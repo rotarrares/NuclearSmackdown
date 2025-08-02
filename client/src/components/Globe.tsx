@@ -35,6 +35,7 @@ const Globe = () => {
   const { playMissile } = useAudio();
 
   const [isHovering, setIsHovering] = useState(false);
+  const [missilesSoundTracked, setMissilesSoundTracked] = useState(new Set<string>());
 
   // Generate globe geometry once
 
@@ -117,13 +118,38 @@ const Globe = () => {
     return new THREE.BufferAttribute(colors, 3);
   }, [tiles, players, tileData, geometry]);
 
-  // Update colors when game state changes
+  // Update colors and handle missile sounds when game state changes
 
   useFrame(() => {
     if (meshRef.current) {
       meshRef.current.geometry.setAttribute("color", colorAttribute);
 
       meshRef.current.geometry.attributes.color.needsUpdate = true;
+    }
+    
+    // Handle missile sound effects
+    const currentTime = Date.now();
+    const newTrackedSounds = new Set(missilesSoundTracked);
+    
+    missiles.forEach((missile) => {
+      const elapsedTime = currentTime - missile.launchTime;
+      const progress = elapsedTime / missile.travelTime;
+      
+      // Play launch sound once
+      if (elapsedTime < 100 && !missilesSoundTracked.has(`launch-${missile.id}`)) {
+        playMissile('launch');
+        newTrackedSounds.add(`launch-${missile.id}`);
+      }
+      
+      // Play impact sound once when missile completes
+      if (progress >= 1.0 && !missilesSoundTracked.has(`impact-${missile.id}`)) {
+        playMissile('impact');
+        newTrackedSounds.add(`impact-${missile.id}`);
+      }
+    });
+    
+    if (newTrackedSounds.size !== missilesSoundTracked.size) {
+      setMissilesSoundTracked(newTrackedSounds);
     }
   });
 
@@ -328,17 +354,6 @@ const Globe = () => {
         const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
         const currentIndex = Math.floor(progress * (validPoints.length - 1));
         const currentPosition = validPoints[currentIndex] || validPoints[0];
-        
-        // Trigger sound effects based on missile state
-        React.useEffect(() => {
-          if (elapsedTime < 100) {
-            // Play launch sound only once at the beginning
-            playMissile('launch');
-          } else if (progress >= 1.0 && elapsedTime - missile.travelTime < 100) {
-            // Play impact sound when missile reaches target
-            playMissile('impact');
-          }
-        }, [missile.id, elapsedTime < 100, progress >= 1.0]);
        
         return (
           <group key={`missile-${missile.id}`}>
