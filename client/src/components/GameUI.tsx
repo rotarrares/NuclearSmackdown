@@ -133,7 +133,7 @@ const GameUI = () => {
         <div style={{ display: 'flex', gap: '20px' }}>
           <div>👑 <strong>{currentPlayer.username}</strong></div>
           <div>💰 Gold: <strong>{currentPlayer.gold.toFixed(0)}</strong></div>
-          <div>👥 Population: <strong>{currentPlayer.population.toFixed(0)}</strong></div>
+          <div>👥 Population: <strong>{currentPlayer.population.toFixed(0)}/{currentPlayer.populationCap || 600}</strong></div>
           <div>🏠 Territory: <strong>{ownedTiles}</strong></div>
         </div>
         <div style={{ display: 'flex', gap: '20px' }}>
@@ -163,8 +163,8 @@ const GameUI = () => {
         
         <div style={{ marginBottom: '15px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-            <span>⚔️ Soldiers: {Math.floor(currentPlayer.population * currentPlayer.workerRatio)}</span>
-            <span>🔨 Workers: {Math.floor(currentPlayer.population * (1 - currentPlayer.workerRatio))}</span>
+            <span>⚔️ Soldiers: {Math.floor(currentPlayer.population * (1 - currentPlayer.workerRatio))}</span>
+            <span>🔨 Workers: {Math.floor(currentPlayer.population * currentPlayer.workerRatio)}</span>
           </div>
           
           <input
@@ -190,8 +190,8 @@ const GameUI = () => {
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '14px' }}>
-            <span>🔒 Reserved: {Math.floor(currentPlayer.population * currentPlayer.workerRatio * (1 - (currentPlayer.troopDeployment || 0)))}</span>
-            <span>⚔️ Deployed: {Math.floor(currentPlayer.population * currentPlayer.workerRatio * (currentPlayer.troopDeployment || 0))}</span>
+            <span>🔒 Reserved: {Math.floor(currentPlayer.population * (1 - currentPlayer.workerRatio) * (1 - (currentPlayer.troopDeployment || 0)))}</span>
+            <span>⚔️ Deployed: {Math.floor(currentPlayer.population * (1 - currentPlayer.workerRatio) * (currentPlayer.troopDeployment || 0))}</span>
           </div>
           
           <input

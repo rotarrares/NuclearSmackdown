@@ -97,9 +97,10 @@ export class GameState {
       username,
       color,
       gold: 0,
-      population: 3000,
-      workerRatio: 0.2,
-      troopDeployment: 0.5,
+      population: 500, // Starting population
+      populationCap: 600, // Starting population cap
+      workerRatio: 0.1, // 90% soldiers, 10% workers (workerRatio is workers percentage)
+      troopDeployment: 0.5, // 50% troop deployment
       conquestTroops: 0,
       isConquering: false,
       spawnTileId: 0, // Will be set when player selects first tile
@@ -312,9 +313,13 @@ export class GameState {
       }
       
       tile.ownerId = playerId;
-      tile.population = 500; // Starting population
+      tile.population = 100; // Starting tile population
       player.spawnTileId = tileId;
-      console.log(`Player ${playerId} selected spawn tile ${tileId}`);
+      
+      // Update population cap for first tile (600 base + 100 for first tile = 700)
+      player.populationCap = 700;
+      
+      console.log(`Player ${playerId} selected spawn tile ${tileId}, population cap now ${player.populationCap}`);
       return { success: true, data: { type: "first_tile_claimed", tileId } };
     }
 
@@ -454,7 +459,10 @@ export class GameState {
       targetTile.ownerId = player.id;
       targetTile.population = Math.floor(player.population / 10); // Some population moves to new tile
       
-      console.log(`Player ${player.id} conquered tile ${randomCandidate.tileId} (${targetTile.terrainType}) - cost ${troopCost} troops, ${player.conquestTroops} remaining`);
+      // Increase population cap by 100 for each new tile conquered
+      player.populationCap += 100;
+      
+      console.log(`Player ${player.id} conquered tile ${randomCandidate.tileId} (${targetTile.terrainType}) - cost ${troopCost} troops, ${player.conquestTroops} remaining, population cap now ${player.populationCap}`);
       
       // Broadcast territory claim event for real-time updates
       return {
@@ -524,14 +532,26 @@ export class GameState {
         (tile) => tile.ownerId === player.id,
       );
 
-      // Population growth: +100 every 10 seconds
-      while (now - player.lastPopulationGrowth >= 10000) {
-        player.population += 100;
-        player.lastPopulationGrowth += 10000;
+      // Population growth based on formula: (sqrt(x)-(x*x)) / 6 where x is population cap
+      const timeSinceLastGrowth = now - player.lastPopulationGrowth;
+      if (timeSinceLastGrowth >= 1000) { // Check every second
+        const x = player.populationCap;
+        const growthRate = Math.max(0, (Math.sqrt(x) - (x * x)) / 6);
+        const populationGrowth = Math.floor(growthRate);
+        
+        // Apply growth but don't exceed population cap
+        const newPopulation = Math.min(player.populationCap, player.population + populationGrowth);
+        player.population = newPopulation;
+        
+        player.lastPopulationGrowth = now;
+        
+        if (populationGrowth > 0) {
+          console.log(`Player ${player.id}: population ${player.population}/${player.populationCap}, growth: +${populationGrowth}`);
+        }
       }
 
       // Gold generation from workers
-      const workers = player.population * player.workerRatio;
+      const workers = Math.floor(player.population * player.workerRatio);
       const goldPerSecond = workers * 0.1;
       const goldGrowth = goldPerSecond * (deltaTime / 1000);
       player.gold += goldGrowth;

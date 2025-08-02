@@ -23,6 +23,7 @@ export interface Player {
   color: string;
   gold: number;
   population: number;
+  populationCap: number; // Maximum population capacity
   workerRatio: number; // 0-1, percentage of population that are workers (vs soldiers)
   troopDeployment: number; // 0-1, percentage of soldiers to deploy for combat/expansion
   conquestTroops: number; // Number of troops currently allocated to conquering

@@ -16,6 +16,7 @@ interface MultiplayerState {
   expandTerritory: (tileId: number) => void;
   adjustWorkerRatio: (ratio: number) => void;
   adjustTroopDeployment: (deployment: number) => void;
+  cancelConquest: () => void;
   buildStructure: (tileId: number, structureType: 'city' | 'port' | 'missile_silo') => void;
   launchMissile: (fromTileId: number, toTileId: number) => void;
   

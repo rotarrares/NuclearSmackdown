@@ -8,6 +8,7 @@ export interface Player {
   // Economy
   gold: number;
   population: number;
+  populationCap: number; // Maximum population capacity
   workerRatio: number; // 0 = all soldiers, 1 = all workers
   troopDeployment: number; // 0 = no troops deployed, 1 = all soldiers deployed
   
