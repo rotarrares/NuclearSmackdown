@@ -14,7 +14,7 @@ import { useMultiplayer } from "../lib/stores/useMultiplayer";
 import { useAudio } from "../lib/stores/useAudio";
 
 import { Tile, Player } from "../lib/types/game";
-import { Missile } from "../../shared/schema";
+import { Missile } from "../../../shared/schema";
 
 // Separate component for smooth missile animation
 const MissileRenderer = ({ missile, curve, validPoints }: {
@@ -343,21 +343,41 @@ const Globe = () => {
             tile.structureType === "missile_silo",
         );
 
-        if (missileSilos.length > 0 && (!gameStateTile?.ownerId || gameStateTile.ownerId !== currentPlayer.id)) {
-          // Prevent rapid-fire missile launches (1 second cooldown)
-          const now = Date.now();
-          if (now - lastMissileLaunch < 1000) {
-            console.log("Missile launch on cooldown");
-            setMouseDownPos(null);
-            setIsDragging(false);
-            return;
-          }
+        console.log(`Missile launch attempt - Found ${missileSilos.length} missile silos`);
+        console.log(`Target tile: ${hoveredTile.id}, owned by: ${gameStateTile?.ownerId}, current player: ${currentPlayer.id}`);
 
-          // Use the first available missile silo
-          const silo = missileSilos[0];
-          launchMissile(silo.id, hoveredTile.id);
-          setLastMissileLaunch(now);
-          console.log(`SHIFT+CLICK: Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}`);
+        if (missileSilos.length > 0) {
+          if (!gameStateTile?.ownerId || gameStateTile.ownerId !== currentPlayer.id) {
+            // Check gold requirement (200 gold)
+            if (currentPlayer.gold < 200) {
+              console.log(`Insufficient gold for missile launch: ${currentPlayer.gold}/200`);
+              useGameState.getState().addAlert("Need 200 gold to launch missile", "error");
+              setMouseDownPos(null);
+              setIsDragging(false);
+              return;
+            }
+
+            // Prevent rapid-fire missile launches (1 second cooldown)
+            const now = Date.now();
+            if (now - lastMissileLaunch < 1000) {
+              console.log("Missile launch on cooldown");
+              setMouseDownPos(null);
+              setIsDragging(false);
+              return;
+            }
+
+            // Use the first available missile silo
+            const silo = missileSilos[0];
+            console.log(`Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}, player has ${currentPlayer.gold} gold`);
+            launchMissile(silo.id, hoveredTile.id);
+            setLastMissileLaunch(now);
+          } else {
+            console.log("Cannot target own territory with missiles");
+            useGameState.getState().addAlert("Cannot target your own territory", "error");
+          }
+        } else {
+          console.log("No missile silos available - build one first");
+          useGameState.getState().addAlert("Build a missile silo first", "error");
         }
       } else {
         // Regular Click = Territory actions

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useGameState } from "./useGameState";
 import { Player, GameTile } from "../types/game";
-import { Missile } from "../../shared/schema";
+import { Missile } from "../../../shared/schema";
 
 interface MultiplayerState {
   socket: WebSocket | null;
