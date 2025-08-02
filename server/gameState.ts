@@ -302,7 +302,22 @@ export class GameState {
       return { success: false, error: "Already conquering territory" };
     }
     
-    // Calculate available troops for conquest
+    // If this is the player's first tile, bypass troop requirements
+    const playerTiles = Array.from(this.tiles.values()).filter(t => t.ownerId === playerId);
+    if (playerTiles.length === 0) {
+      // First tile selection - only check if it's a valid terrain type
+      if (tile.terrainType === 'water' || tile.terrainType === 'mountain') {
+        return { success: false, error: "Cannot claim water or mountain tiles" };
+      }
+      
+      tile.ownerId = playerId;
+      tile.population = 500; // Starting population
+      player.spawnTileId = tileId;
+      console.log(`Player ${playerId} selected spawn tile ${tileId}`);
+      return { success: true, data: { type: "first_tile_claimed", tileId } };
+    }
+
+    // Calculate available troops for conquest (for non-first tiles)
     const soldiers = Math.floor(player.population * player.workerRatio);
     const deployedTroops = Math.floor(soldiers * player.troopDeployment);
     
@@ -310,19 +325,9 @@ export class GameState {
       return { success: false, error: "Need at least 50 deployed troops to start conquest" };
     }
     
-    // Check if adjacent to player territory (unless player has no territory yet)
-    const playerTiles = Array.from(this.tiles.values()).filter(t => t.ownerId === playerId);
-    if (playerTiles.length > 0 && !this.isAdjacentToOwnTerritory(playerId, tileId)) {
+    // Check adjacency requirement for subsequent tiles
+    if (!this.isAdjacentToOwnTerritory(playerId, tileId)) {
       return { success: false, error: "Tile not adjacent to your territory" };
-    }
-    
-    // If this is the player's first tile, set it as spawn tile and give starting population
-    if (playerTiles.length === 0) {
-      tile.ownerId = playerId;
-      tile.population = 500; // Starting population
-      player.spawnTileId = tileId;
-      console.log(`Player ${playerId} selected spawn tile ${tileId}`);
-      return { success: true, data: { type: "conquest_started", tileId, isFirstTile: true } };
     }
     
     // Start conquest

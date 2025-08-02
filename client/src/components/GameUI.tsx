@@ -39,6 +39,42 @@ const GameUI = () => {
     );
   }
 
+  if (gamePhase === 'waiting' && !currentPlayer) {
+    return (
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: 'rgba(0, 0, 0, 0.9)',
+        color: 'white',
+        padding: '30px',
+        borderRadius: '8px',
+        textAlign: 'center',
+        maxWidth: '400px'
+      }}>
+        <h1 style={{ margin: '0 0 20px 0', fontSize: '28px' }}>🌍 OpenFront.io</h1>
+        <p style={{ margin: '0 0 20px 0', fontSize: '16px' }}>
+          A global strategy game where you manage population, build cities, and dominate the world.
+        </p>
+        <button
+          onClick={spawnPlayer}
+          style={{
+            padding: '12px 24px',
+            fontSize: '16px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Join Game
+        </button>
+      </div>
+    );
+  }
+
   if (!currentPlayer) {
     return null;
   }
