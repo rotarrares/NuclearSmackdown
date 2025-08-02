@@ -13,7 +13,124 @@ import { useMultiplayer } from "../lib/stores/useMultiplayer";
 
 import { useAudio } from "../lib/stores/useAudio";
 
-import { Tile, Player } from "../lib/types/game";
+import { Tile, Player, Missile } from "../lib/types/game";
+
+// Separate component for smooth missile animation
+const MissileRenderer = ({ missile, curve, validPoints }: {
+  missile: Missile;
+  curve: THREE.CatmullRomCurve3;
+  validPoints: THREE.Vector3[];
+}) => {
+  const meshRef = useRef<THREE.Group>(null);
+  
+  useFrame(() => {
+    if (!meshRef.current) return;
+    
+    // Calculate missile progress for smooth animation using frame time
+    const elapsedTime = Date.now() - missile.launchTime;
+    const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
+    
+    // Get current position with smooth interpolation
+    let currentPosition: THREE.Vector3;
+    try {
+      currentPosition = curve.getPoint(progress);
+      if (!currentPosition || isNaN(currentPosition.x) || isNaN(currentPosition.y) || isNaN(currentPosition.z)) {
+        // Fallback to manual interpolation
+        const index = Math.floor(progress * (validPoints.length - 1));
+        const nextIndex = Math.min(index + 1, validPoints.length - 1);
+        const localProgress = (progress * (validPoints.length - 1)) - index;
+        
+        const current = validPoints[index];
+        const next = validPoints[nextIndex];
+        currentPosition = current.clone().lerp(next, localProgress);
+      }
+    } catch (error) {
+      // Fallback to direct point access
+      const index = Math.min(Math.floor(progress * validPoints.length), validPoints.length - 1);
+      currentPosition = validPoints[index];
+    }
+    
+    // Update warhead position smoothly
+    const warhead = meshRef.current.children.find(child => child.name === 'warhead') as THREE.Mesh;
+    const glow = meshRef.current.children.find(child => child.name === 'glow') as THREE.Mesh;
+    
+    if (warhead && currentPosition) {
+      warhead.position.copy(currentPosition);
+    }
+    if (glow && currentPosition) {
+      glow.position.copy(currentPosition);
+    }
+  });
+  
+  const elapsedTime = Date.now() - missile.launchTime;
+  const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
+  
+  return (
+    <group ref={meshRef}>
+      {/* Main trajectory tube - optimized */}
+      <mesh>
+        <tubeGeometry args={[curve, 32, 0.003, 6, false]} />
+        <meshBasicMaterial
+          color={0xffffff}
+          transparent={true}
+          opacity={0.6}
+        />
+      </mesh>
+      
+      {/* Animated missile warhead - optimized */}
+      <mesh name="warhead">
+        <sphereGeometry args={[0.015, 8, 8]} />
+        <meshBasicMaterial color={0xff2222} />
+      </mesh>
+      
+      {/* Reduced glow halo for performance */}
+      <mesh name="glow">
+        <sphereGeometry args={[0.025, 6, 6]} />
+        <meshBasicMaterial 
+          color={0xff4444}
+          transparent={true}
+          opacity={0.2}
+        />
+      </mesh>
+      
+      {/* Fewer trajectory marker points for performance */}
+      {validPoints.filter((_, i) => i % 6 === 0).map((point: THREE.Vector3, index: number) => (
+        <mesh key={`marker-${missile.id}-${index}`} position={point}>
+          <sphereGeometry args={[0.004, 4, 4]} />
+          <meshBasicMaterial 
+            color={0xffff44}
+            transparent={true}
+            opacity={0.4}
+          />
+        </mesh>
+      ))}
+      
+      {/* Launch flash effect */}
+      {elapsedTime < 200 && (
+        <mesh position={validPoints[0]}>
+          <sphereGeometry args={[0.05, 8, 8]} />
+          <meshBasicMaterial 
+            color={0xffffff}
+            transparent={true}
+            opacity={0.8}
+          />
+        </mesh>
+      )}
+      
+      {/* Impact flash effect */}
+      {progress >= 1.0 && elapsedTime - missile.travelTime < 500 && (
+        <mesh position={validPoints[validPoints.length - 1]}>
+          <sphereGeometry args={[0.08, 12, 12]} />
+          <meshBasicMaterial 
+            color={0xff4400}
+            transparent={true}
+            opacity={Math.max(0, 1 - (elapsedTime - missile.travelTime) / 500)}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+};
 
 const Globe = () => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -379,28 +496,22 @@ const Globe = () => {
         );
       })}
 
-      {/* Missile trajectories */}
+      {/* Missile trajectories - optimized for smooth animation */}
       {Array.from(missiles.values()).map((missile) => {
-        console.log(`Rendering missile ${missile.id}:`, missile);
-        
         if (!missile || !missile.trajectory || missile.trajectory.length === 0) {
-          console.log(`Skipping missile ${missile?.id} - no trajectory`);
           return null;
         }
        
         const points = missile.trajectory.map((point: [number, number, number]) => {
           if (!point || point.length !== 3) return null;
           return new THREE.Vector3(point[0], point[1], point[2]);
-        }).filter(p => p !== null) as THREE.Vector3[];
+        }).filter((p: THREE.Vector3 | null): p is THREE.Vector3 => p !== null);
         
         // Validate points
         const validPoints = points.filter(p => p && !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.z));
-        if (validPoints.length === 0) {
-          console.log(`No valid points for missile ${missile.id}`);
+        if (validPoints.length < 2) {
           return null;
         }
-        
-        console.log(`Missile ${missile.id} has ${validPoints.length} valid points`);
         
         let curve: THREE.CatmullRomCurve3;
         try {
@@ -410,101 +521,13 @@ const Globe = () => {
           return null;
         }
         
-        // Calculate missile progress for smooth animation
-        const elapsedTime = Date.now() - missile.launchTime;
-        const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
-        
-        // Use curve for smooth trajectory following with safety checks
-        let currentPosition: THREE.Vector3;
-        try {
-          currentPosition = curve.getPoint(progress);
-          if (!currentPosition || isNaN(currentPosition.x) || isNaN(currentPosition.y) || isNaN(currentPosition.z)) {
-            // Fallback to manual interpolation if curve fails
-            const index = Math.floor(progress * (validPoints.length - 1));
-            const nextIndex = Math.min(index + 1, validPoints.length - 1);
-            const localProgress = (progress * (validPoints.length - 1)) - index;
-            
-            const current = validPoints[index];
-            const next = validPoints[nextIndex];
-            currentPosition = current.clone().lerp(next, localProgress);
-          }
-        } catch (error) {
-          console.error(`Error getting curve point for missile ${missile.id}:`, error);
-          // Fallback to direct point access
-          const index = Math.min(Math.floor(progress * validPoints.length), validPoints.length - 1);
-          currentPosition = validPoints[index];
-        }
-        
-        // Final safety check for currentPosition
-        if (!currentPosition || isNaN(currentPosition.x) || isNaN(currentPosition.y) || isNaN(currentPosition.z)) {
-          console.error(`Invalid currentPosition for missile ${missile.id}:`, currentPosition);
-          return null;
-        }
-       
         return (
-          <group key={`missile-${missile.id}`}>
-            {/* Main trajectory tube - optimized */}
-            <mesh>
-              <tubeGeometry args={[curve, 32, 0.003, 6, false]} />
-              <meshBasicMaterial
-                color={0xffffff}
-                transparent={true}
-                opacity={0.6}
-              />
-            </mesh>
-            
-            {/* Animated missile warhead - optimized */}
-            <mesh position={currentPosition}>
-              <sphereGeometry args={[0.015, 8, 8]} />
-              <meshBasicMaterial color={0xff2222} />
-            </mesh>
-            
-            {/* Reduced glow halo for performance */}
-            <mesh position={currentPosition}>
-              <sphereGeometry args={[0.025, 6, 6]} />
-              <meshBasicMaterial 
-                color={0xff4444}
-                transparent={true}
-                opacity={0.2}
-              />
-            </mesh>
-            
-            {/* Fewer trajectory marker points for performance */}
-            {validPoints.filter((_, i) => i % 5 === 0).map((point: THREE.Vector3, index: number) => (
-              <mesh key={`marker-${missile.id}-${index}`} position={point}>
-                <sphereGeometry args={[0.004, 4, 4]} />
-                <meshBasicMaterial 
-                  color={0xffff44}
-                  transparent={true}
-                  opacity={0.5}
-                />
-              </mesh>
-            ))}
-            
-            {/* Launch flash effect */}
-            {elapsedTime < 200 && (
-              <mesh position={validPoints[0]}>
-                <sphereGeometry args={[0.05, 8, 8]} />
-                <meshBasicMaterial 
-                  color={0xffffff}
-                  transparent={true}
-                  opacity={0.8}
-                />
-              </mesh>
-            )}
-            
-            {/* Impact flash effect */}
-            {progress >= 1.0 && elapsedTime - missile.travelTime < 500 && (
-              <mesh position={validPoints[validPoints.length - 1]}>
-                <sphereGeometry args={[0.08, 12, 12]} />
-                <meshBasicMaterial 
-                  color={0xff4400}
-                  transparent={true}
-                  opacity={Math.max(0, 1 - (elapsedTime - missile.travelTime) / 500)}
-                />
-              </mesh>
-            )}
-          </group>
+          <MissileRenderer
+            key={`missile-${missile.id}`}
+            missile={missile}
+            curve={curve}
+            validPoints={validPoints}
+          />
         );
       }).filter(Boolean)}
     </group>
