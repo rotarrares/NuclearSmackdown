@@ -331,10 +331,15 @@ export class GameState {
       return { success: false, error: "Tile not adjacent to your territory" };
     }
     
+    // Remove deployed troops from population (they're now committed to conquest)
+    player.population = Math.max(0, player.population - deployedTroops);
+    
     // Start conquest
     player.conquestTroops = deployedTroops;
     player.isConquering = true;
     player.lastActive = Date.now();
+    
+    console.log(`Player ${player.id} deployed ${deployedTroops} troops for conquest, population reduced to ${player.population}`);
     
     return { success: true, data: { conquestTroops: deployedTroops } };
   }
@@ -345,11 +350,18 @@ export class GameState {
       return { success: false, error: "Player not found" };
     }
     
+    // Return remaining conquest troops to population
+    const remainingTroops = player.conquestTroops;
+    if (remainingTroops > 0) {
+      player.population += remainingTroops;
+      console.log(`Player ${player.id} cancelled conquest, returned ${remainingTroops} troops to population (now ${player.population})`);
+    }
+    
     player.conquestTroops = 0;
     player.isConquering = false;
     player.lastActive = Date.now();
     
-    return { success: true };
+    return { success: true, data: { returnedTroops: remainingTroops } };
   }
 
   private processConquest(player: Player): any {
@@ -539,10 +551,10 @@ export class GameState {
           }
         }
         
-        // Stop conquest if no troops left
+        // Stop conquest if no troops left (troops were used up during conquest)
         if (player.conquestTroops <= 0) {
           player.isConquering = false;
-          console.log(`Player ${player.id} conquest stopped - no troops remaining`);
+          console.log(`Player ${player.id} conquest stopped - all troops used in conquest`);
         }
       }
 
