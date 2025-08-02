@@ -402,14 +402,44 @@ const Globe = () => {
         
         console.log(`Missile ${missile.id} has ${validPoints.length} valid points`);
         
-        const curve = new THREE.CatmullRomCurve3(validPoints);
+        let curve: THREE.CatmullRomCurve3;
+        try {
+          curve = new THREE.CatmullRomCurve3(validPoints);
+        } catch (error) {
+          console.error(`Error creating curve for missile ${missile.id}:`, error);
+          return null;
+        }
         
         // Calculate missile progress for smooth animation
         const elapsedTime = Date.now() - missile.launchTime;
         const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
         
-        // Use curve for smooth trajectory following
-        const currentPosition = curve.getPoint(progress);
+        // Use curve for smooth trajectory following with safety checks
+        let currentPosition: THREE.Vector3;
+        try {
+          currentPosition = curve.getPoint(progress);
+          if (!currentPosition || isNaN(currentPosition.x) || isNaN(currentPosition.y) || isNaN(currentPosition.z)) {
+            // Fallback to manual interpolation if curve fails
+            const index = Math.floor(progress * (validPoints.length - 1));
+            const nextIndex = Math.min(index + 1, validPoints.length - 1);
+            const localProgress = (progress * (validPoints.length - 1)) - index;
+            
+            const current = validPoints[index];
+            const next = validPoints[nextIndex];
+            currentPosition = current.clone().lerp(next, localProgress);
+          }
+        } catch (error) {
+          console.error(`Error getting curve point for missile ${missile.id}:`, error);
+          // Fallback to direct point access
+          const index = Math.min(Math.floor(progress * validPoints.length), validPoints.length - 1);
+          currentPosition = validPoints[index];
+        }
+        
+        // Final safety check for currentPosition
+        if (!currentPosition || isNaN(currentPosition.x) || isNaN(currentPosition.y) || isNaN(currentPosition.z)) {
+          console.error(`Invalid currentPosition for missile ${missile.id}:`, currentPosition);
+          return null;
+        }
        
         return (
           <group key={`missile-${missile.id}`}>
@@ -476,7 +506,7 @@ const Globe = () => {
             )}
           </group>
         );
-      })}
+      }).filter(Boolean)}
     </group>
   );
 };

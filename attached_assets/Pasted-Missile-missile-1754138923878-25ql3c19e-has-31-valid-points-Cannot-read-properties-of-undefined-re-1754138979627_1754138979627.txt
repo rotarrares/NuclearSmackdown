@@ -1,0 +1,29 @@
+Missile missile_1754138923878_25ql3c19e has 31 valid points
+Cannot read properties of undefined (reading 'x')
+The above error occurred in the <Globe> component:
+
+    at Globe (https://09f9a2af-98bb-44bf-b259-5042f2f6ff96-00-3rje9d13z2f3f.kirk.replit.dev:5000/src/components/Globe.tsx:27:19)
+    at Suspense
+    at Suspense
+    at ErrorBoundary (https://09f9a2af-98bb-44bf-b259-5042f2f6ff96-00-3rje9d13z2f3f.kirk.replit.dev:5000/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-T6SUJGNB.js?v=cd0a57e9:16490:5)
+    at FiberProvider (https://09f9a2af-98bb-44bf-b259-5042f2f6ff96-00-3rje9d13z2f3f.kirk.replit.dev:5000/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-T6SUJGNB.js?v=cd0a57e9:18170:21)
+    at Provider (https://09f9a2af-98bb-44bf-b259-5042f2f6ff96-00-3rje9d13z2f3f.kirk.replit.dev:5000/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-T6SUJGNB.js?v=cd0a57e9:17779:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+Cannot read properties of undefined (reading 'x')
+Cannot read properties of undefined (reading 'x')
+The above error occurred in the <ForwardRef(Canvas)> component:
+
+    at Canvas (https://09f9a2af-98bb-44bf-b259-5042f2f6ff96-00-3rje9d13z2f3f.kirk.replit.dev:5000/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-T6SUJGNB.js?v=cd0a57e9:18236:3)
+    at FiberProvider (https://09f9a2af-98bb-44bf-b259-5042f2f6ff96-00-3rje9d13z2f3f.kirk.replit.dev:5000/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-T6SUJGNB.js?v=cd0a57e9:18170:21)
+    at CanvasWrapper
+    at div
+    at App (https://09f9a2af-98bb-44bf-b259-5042f2f6ff96-00-3rje9d13z2f3f.kirk.replit.dev:5000/src/App.tsx?v=hLYaZomaDP4XuDRNimYXq:30:36)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+Cannot read properties of undefined (reading 'x')
+THREE.WebGLRenderer: Context Lost.
+Removing missile missile_1754138923878_25ql3c19e from game state
+Total missiles after removal: 0
+Missile missile_1754138923878_25ql3c19e impacted at tile 33531
