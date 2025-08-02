@@ -365,11 +365,11 @@ const Globe = () => {
           // Unowned tile - start conquest
           startConquest(hoveredTile.id);
         } else if (gameStateTile.ownerId === currentPlayer.id) {
-          // Owned tile - show building options
+          // Owned tile - show building options at center of screen
           useGameState.getState().setBuildingOptions({
             tileId: hoveredTile.id,
             canBuildPort: true, // Will be determined by server
-            position: { x: 0, y: 0 }
+            position: { x: window.innerWidth / 2, y: window.innerHeight / 2 }
           });
         }
       }
