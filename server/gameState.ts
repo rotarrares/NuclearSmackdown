@@ -359,49 +359,7 @@ export class GameState {
       return null;
     }
 
-    // Deplete troops based on terrain difficulty every 100ms
-    const now = Date.now();
-    const timeSinceLastUpdate = now - (player.lastConquestUpdate || now);
-    
-    if (timeSinceLastUpdate >= 100) { // Process every 100ms
-      // Get all owned tiles by this player to find terrain types being conquered
-      const ownedTiles = Array.from(this.tiles.values()).filter(
-        tile => tile.ownerId === player.id
-      );
-
-      // Find adjacent unclaimed tiles to determine conquest difficulty
-      let averageTerrainDifficulty = 10; // Default moderate difficulty
-      let adjacentUnclaimedCount = 0;
-      
-      ownedTiles.forEach(ownedTile => {
-        const adjacentTileIds = this.adjacencyMap.get(ownedTile.id) || [];
-        adjacentTileIds.forEach(adjId => {
-          const adjTile = this.tiles.get(adjId);
-          // Only count conquerable terrain (exclude water and mountains)
-          if (adjTile && !adjTile.ownerId && adjTile.terrainType !== 'water' && adjTile.terrainType !== 'mountain') {
-            adjacentUnclaimedCount++;
-            // Calculate troop loss based on terrain
-            switch (adjTile.terrainType) {
-              case 'grass': averageTerrainDifficulty += 5; break;
-              case 'desert': averageTerrainDifficulty += 10; break;
-            }
-          }
-        });
-      });
-      
-      if (adjacentUnclaimedCount > 0) {
-        averageTerrainDifficulty = averageTerrainDifficulty / adjacentUnclaimedCount;
-      }
-      
-      // Deplete troops based on difficulty
-      const troopLoss = Math.ceil(averageTerrainDifficulty * (timeSinceLastUpdate / 100));
-      player.conquestTroops = Math.max(0, player.conquestTroops - troopLoss);
-      player.lastConquestUpdate = now;
-      
-      console.log(`Player ${player.id} conquest: ${player.conquestTroops} troops remaining (lost ${troopLoss})`);
-    }
-
-    // Find all unclaimed adjacent tiles for potential conquest
+    // Get all owned tiles by this player to find conquerable territory
     const ownedTiles = Array.from(this.tiles.values()).filter(
       tile => tile.ownerId === player.id
     );
@@ -458,11 +416,33 @@ export class GameState {
     const targetTile = this.tiles.get(randomCandidate.tileId);
     
     if (targetTile && !targetTile.ownerId) {
+      // Calculate troop cost based on terrain difficulty
+      let troopCost = 15; // Base cost
+      switch (targetTile.terrainType) {
+        case 'grass': troopCost = 10; break;
+        case 'desert': troopCost = 20; break;
+        case 'mountain': troopCost = 30; break;
+      }
+      
+      // Check if player has enough troops to conquer this tile
+      if (player.conquestTroops < troopCost) {
+        // Not enough troops, conquest stops
+        return {
+          type: 'conquest_no_progress',
+          playerId: player.id,
+          conquestProgress: false,
+          reason: 'insufficient_troops'
+        };
+      }
+      
+      // Deduct troops for conquering this tile
+      player.conquestTroops = Math.max(0, player.conquestTroops - troopCost);
+      
       // Claim the tile
       targetTile.ownerId = player.id;
       targetTile.population = Math.floor(player.population / 10); // Some population moves to new tile
       
-      console.log(`Player ${player.id} conquered tile ${randomCandidate.tileId} (${targetTile.terrainType})`);
+      console.log(`Player ${player.id} conquered tile ${randomCandidate.tileId} (${targetTile.terrainType}) - cost ${troopCost} troops, ${player.conquestTroops} remaining`);
       
       // Broadcast territory claim event for real-time updates
       return {
@@ -470,7 +450,9 @@ export class GameState {
         tileId: randomCandidate.tileId,
         playerId: player.id,
         population: targetTile.population,
-        conquestProgress: true // Mark that progress was made
+        conquestProgress: true, // Mark that progress was made
+        troopCost: troopCost,
+        troopsRemaining: player.conquestTroops
       };
     }
     
