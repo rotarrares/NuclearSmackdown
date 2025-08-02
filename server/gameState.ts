@@ -393,10 +393,19 @@ export class GameState {
     if (!fromTileData || !toTileData) {
       return { success: false, error: "Tile data not found" };
     }
-    const trajectory = this.calculateSphericalTrajectory(
-      fromTileData.center,
-      toTileData.center,
-    );
+    // Ensure we have proper coordinate arrays
+    const fromCoords: [number, number, number] = [
+      fromTileData.center[0],
+      fromTileData.center[1], 
+      fromTileData.center[2]
+    ];
+    const toCoords: [number, number, number] = [
+      toTileData.center[0],
+      toTileData.center[1],
+      toTileData.center[2]
+    ];
+    
+    const trajectory = this.calculateSphericalTrajectory(fromCoords, toCoords);
     const travelTime = 3000; // 3 seconds travel time
     const missile: Missile = {
       id: `missile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

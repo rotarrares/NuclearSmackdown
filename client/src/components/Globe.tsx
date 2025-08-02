@@ -308,59 +308,21 @@ const Globe = () => {
       })}
 
       {/* Missile trajectories */}
-      {(() => {
-        console.log(`Globe rendering: ${missiles.size} missiles in state`);
-        return Array.from(missiles.values());
-      })().map((missile) => {
-        if (!missile.trajectory || missile.trajectory.length === 0) {
-          console.log(`Missile ${missile.id} has no trajectory data`);
-          return null;
-        }
-
-        console.log(`Rendering trajectory for missile ${missile.id} with ${missile.trajectory.length} points`);
-        console.log(`Trajectory points:`, missile.trajectory.slice(0, 3), '...', missile.trajectory.slice(-3));
-
-        // Check for valid trajectory points
-        const validTrajectory = missile.trajectory.filter(point => 
-          point && point.length === 3 && 
-          point.every(coord => typeof coord === 'number' && !isNaN(coord))
-        );
-        
-        if (validTrajectory.length === 0) {
-          console.error(`Missile ${missile.id} has invalid trajectory data:`, missile.trajectory);
-          return null;
-        }
-        
-        const points = validTrajectory.map(
-          (point: [number, number, number]) => new THREE.Vector3(...point),
-        );
-
+      {Array.from(missiles.values()).map((missile) => {
+        if (!missile.trajectory || missile.trajectory.length === 0) return null;
+       
+        const points = missile.trajectory.map((point: [number, number, number]) => new THREE.Vector3(...point));
+        const curve = new THREE.CatmullRomCurve3(points);
+       
         return (
-          <group key={`missile-group-${missile.id}`}>
-            {/* Use a very thick, bright white tube for maximum visibility */}
-            <mesh>
-              <tubeGeometry args={[new THREE.CatmullRomCurve3(points), 64, 0.015, 8, false]} />
-              <meshBasicMaterial
-                color={0xffffff}
-                transparent={false}
-                opacity={1.0}
-              />
-            </mesh>
-            {/* Add large bright trajectory points for visibility */}
-            {points.map((point: THREE.Vector3, index: number) => (
-              <mesh key={`point-${missile.id}-${index}`} position={point}>
-                <sphereGeometry args={[0.008, 8, 8]} />
-                <meshBasicMaterial color={0xffff00} />
-              </mesh>
-            ))}
-            {/* Add a large missile sphere at peak trajectory for visibility */}
-            {points.length > 0 && (
-              <mesh position={points[Math.floor(points.length * 0.5)]}>
-                <sphereGeometry args={[0.02, 8, 8]} />
-                <meshBasicMaterial color={0xff0000} />
-              </mesh>
-            )}
-          </group>
+          <mesh key={`missile-${missile.id}`}>
+            <tubeGeometry args={[curve, 64, 0.002, 8, false]} />
+            <meshBasicMaterial
+              color={0xffffff}
+              transparent={true}
+              opacity={0.8}
+            />
+          </mesh>
         );
       })}
     </group>
