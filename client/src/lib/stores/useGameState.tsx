@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { Player, GameTile, GamePhase } from "../types/game";
-import { Missile } from "../../shared/schema";
+import { Missile } from "../../../shared/schema";
 import { TileData } from "../geometry/GlobeGeometry";
 
 interface GameState {
@@ -119,17 +119,25 @@ export const useGameState = create<GameState>()(
       return { tiles: newTiles };
     }),
     
-    addMissile: (missile) => set((state) => {
-      const newMissiles = new Map(state.missiles);
-      newMissiles.set(missile.id, missile);
-      return { missiles: newMissiles };
-    }),
+    addMissile: (missile) => {
+      console.log(`Adding missile ${missile.id} to game state with ${missile.trajectory.length} trajectory points`);
+      set((state) => {
+        const newMissiles = new Map(state.missiles);
+        newMissiles.set(missile.id, missile);
+        console.log(`Total missiles in state: ${newMissiles.size}`);
+        return { missiles: newMissiles };
+      });
+    },
     
-    removeMissile: (missileId) => set((state) => {
-      const newMissiles = new Map(state.missiles);
-      newMissiles.delete(missileId);
-      return { missiles: newMissiles };
-    }),
+    removeMissile: (missileId) => {
+      console.log(`Removing missile ${missileId} from game state`);
+      set((state) => {
+        const newMissiles = new Map(state.missiles);
+        newMissiles.delete(missileId);
+        console.log(`Total missiles after removal: ${newMissiles.size}`);
+        return { missiles: newMissiles };
+      });
+    },
     
     setHoveredTile: (tile) => set({ hoveredTile: tile }),
     

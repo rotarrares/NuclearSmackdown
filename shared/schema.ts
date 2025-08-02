@@ -26,19 +26,40 @@ export interface Player {
   workerRatio: number; // 0-1, percentage of population that are workers (vs soldiers)
   lastActive: number;
   allianceId?: string;
+  lastPopulationGrowth: number;
 }
 
 export interface GameTile {
   id: number;
   ownerId?: string;
-  structureType?: 'city' | 'port' | 'missile_silo' | 'base_hq';
+  structureType?: "city" | "port" | "missile_silo" | "base_hq";
   population: number;
-  terrainType: 'water' | 'grass' | 'desert' | 'mountain';
+  terrainType: "water" | "grass" | "desert" | "mountain";
   isIrradiated?: boolean;
 }
 
+export interface Missile {
+  id: string;
+  fromTileId: number;
+  toTileId: number;
+  playerId: string;
+  launchTime: number;
+  travelTime: number;
+  trajectory: [number, number, number][];
+}
+
 export interface GameMessage {
-  type: 'spawn_player' | 'select_tile' | 'expand_territory' | 'adjust_worker_ratio' | 'build_structure' | 'launch_missile' | 'create_alliance' | 'join_alliance' | 'leave_alliance' | 'kick_from_alliance';
+  type:
+    | "spawn_player"
+    | "select_tile"
+    | "expand_territory"
+    | "adjust_worker_ratio"
+    | "build_structure"
+    | "launch_missile"
+    | "create_alliance"
+    | "join_alliance"
+    | "leave_alliance"
+    | "kick_from_alliance";
   data: any;
 }
 
@@ -52,7 +73,6 @@ export interface Missile {
   trajectory: [number, number, number][]; // 3D points along the path
 }
 
-
 export interface Alliance {
   id: string;
   name: string;
@@ -60,5 +80,3 @@ export interface Alliance {
   memberIds: string[];
   isPublic: boolean;
 }
-
-

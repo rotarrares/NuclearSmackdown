@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useGameState } from "./useGameState";
 import { Player, GameTile } from "../types/game";
-import { Missile } from "../../shared/schema";
+import { Missile } from "../../../shared/schema";
 
 interface MultiplayerState {
   socket: WebSocket | null;
@@ -147,16 +147,6 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
     socket.send(JSON.stringify({
       type: 'build_structure',
       data: { tileId, structureType }
-    }));
-  },
-
-  launchMissile: (fromTileId: number, toTileId: number) => {
-    const { socket } = get();
-    if (!socket) return;
-    
-    socket.send(JSON.stringify({
-      type: 'launch_missile',
-      data: { fromTileId, toTileId }
     }));
   },
 

@@ -1,5 +1,7 @@
 import { WebSocket } from "ws";
+
 import { GameState } from "./gameState";
+
 import { Player, GameTile, GameMessage } from "../client/src/lib/types/game";
 
 interface ClientConnection {
@@ -16,17 +18,14 @@ export class GameServer {
 
   constructor() {
     this.gameState = new GameState();
-
     // Start game loop (60 FPS)
     this.gameLoop = setInterval(() => {
       this.update();
     }, 1000 / 60);
-
     // Start ping interval (every 30 seconds)
     this.pingInterval = setInterval(() => {
       this.pingClients();
     }, 30000);
-
     console.log("Game server initialized");
   }
 
@@ -35,9 +34,7 @@ export class GameServer {
       ws,
       lastPing: Date.now(),
     };
-
     this.connections.set(ws, connection);
-
     // Send current game state to new client
     this.sendToClient(ws, {
       type: "game_state",
@@ -71,7 +68,6 @@ export class GameServer {
     if (connection?.playerId) {
       // Remove player from game
       this.gameState.removePlayer(connection.playerId);
-
       // Notify other clients
       this.broadcast(
         {
@@ -81,7 +77,6 @@ export class GameServer {
         ws,
       );
     }
-
     this.connections.delete(ws);
   }
 
@@ -93,43 +88,33 @@ export class GameServer {
       case "spawn_player":
         this.handleSpawnPlayer(ws, message.data);
         break;
-
       case "select_tile":
         this.handleSelectTile(ws, message.data);
         break;
-
       case "expand_territory":
         this.handleExpandTerritory(ws, message.data);
         break;
-
       case "build_structure":
         this.handleBuildStructure(ws, message.data);
         break;
-
       case "adjust_worker_ratio":
         this.handleAdjustWorkerRatio(ws, message.data);
         break;
-
       case "launch_missile":
         this.handleLaunchMissile(ws, message.data);
         break;
-
       case "create_alliance":
         this.handleCreateAlliance(ws, message.data);
         break;
-
       case "join_alliance":
         this.handleJoinAlliance(ws, message.data);
         break;
-
       case "leave_alliance":
         this.handleLeaveAlliance(ws, message.data);
         break;
-
       case "kick_from_alliance":
         this.handleKickFromAlliance(ws, message.data);
         break;
-
       default:
         this.sendError(ws, `Unknown message type: ${message.type}`);
     }
@@ -146,13 +131,11 @@ export class GameServer {
 
     const player = this.gameState.spawnPlayer(data.username);
     connection.playerId = player.id;
-
     // Send spawn confirmation to client
     this.sendToClient(ws, {
       type: "player_spawned",
       data: { player },
     });
-
     // Notify other clients
     this.broadcast(
       {
@@ -161,7 +144,6 @@ export class GameServer {
       },
       ws,
     );
-
     console.log(`Player spawned: ${player.username} (${player.id})`);
   }
 
@@ -173,7 +155,6 @@ export class GameServer {
     }
 
     const result = this.gameState.selectTile(connection.playerId, data.tileId);
-
     if (result.success) {
       if (result.data?.type === "building_options") {
         // Send building options back to client
@@ -183,14 +164,16 @@ export class GameServer {
         });
       } else {
         // Territory expansion successful
-        this.broadcast({
-          type: "territory_expanded",
-          data: {
-            tileId: data.tileId,
-            playerId: connection.playerId,
-          },
-        });
-
+        const claimedTiles = result.data?.claimedTiles || [];
+        for (const tileId of claimedTiles) {
+          this.broadcast({
+            type: "territory_expanded",
+            data: {
+              tileId,
+              playerId: connection.playerId,
+            },
+          });
+        }
         // Update player stats
         this.broadcast({
           type: "player_updated",
@@ -219,7 +202,6 @@ export class GameServer {
       data.tileId,
       data.structureType,
     );
-
     if (result.success && result.data?.tile) {
       // Broadcast structure built with full tile data
       this.broadcast({
@@ -228,7 +210,6 @@ export class GameServer {
           tile: result.data.tile,
         },
       });
-
       // Update player stats
       this.broadcast({
         type: "player_updated",
@@ -257,7 +238,6 @@ export class GameServer {
       connection.playerId,
       data.ratio,
     );
-
     if (result.success) {
       this.broadcast({
         type: "player_updated",
@@ -285,7 +265,6 @@ export class GameServer {
       data.fromTileId,
       data.toTileId,
     );
-
     if (result.success && result.data?.missile) {
       // Broadcast missile launch to all clients
       this.broadcast({
@@ -294,7 +273,6 @@ export class GameServer {
           missile: result.data.missile,
         },
       });
-
       // Schedule missile impact
       setTimeout(() => {
         const impactResult = this.gameState.impactMissile(
@@ -311,7 +289,6 @@ export class GameServer {
           });
         }
       }, result.data.missile.travelTime);
-
       console.log(
         `Missile launched from ${data.fromTileId} to ${data.toTileId}`,
       );
@@ -323,9 +300,8 @@ export class GameServer {
   private update() {
     // Update game state
     this.gameState.update();
-
-    // Broadcast periodic updates (every 5 seconds)
-    if (this.gameState.getGameTime() % 5000 < 16) {
+    // Broadcast periodic updates (every 0.5 seconds)
+    if (this.gameState.getGameTime() % 50 == 0) {
       // Approximately every 5 seconds
       this.broadcast({
         type: "game_state",
@@ -341,7 +317,6 @@ export class GameServer {
 
   private pingClients() {
     const now = Date.now();
-
     this.connections.forEach((connection, ws) => {
       // Remove stale connections (no pong for 60 seconds)
       if (now - connection.lastPing > 60000) {
@@ -350,7 +325,6 @@ export class GameServer {
         this.handleDisconnection(ws);
         return;
       }
-
       // Send ping
       if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
@@ -391,13 +365,11 @@ export class GameServer {
   getLeaderboard() {
     const players = Array.from(this.gameState.getPlayers().values());
     const tiles = this.gameState.getTiles();
-
     return players
       .map((player) => {
         const territoryCount = Array.from(tiles.values()).filter(
           (tile) => tile.ownerId === player.id,
         ).length;
-
         return {
           username: player.username,
           gold: Math.floor(player.gold),
@@ -415,11 +387,9 @@ export class GameServer {
   destroy() {
     clearInterval(this.gameLoop);
     clearInterval(this.pingInterval);
-
     this.connections.forEach((connection, ws) => {
       ws.close();
     });
-
     this.connections.clear();
   }
 
@@ -432,6 +402,7 @@ export class GameServer {
       this.sendError(ws, "Player not spawned");
       return;
     }
+
     const result = this.gameState.createAlliance(
       connection.playerId,
       data.name,
@@ -451,6 +422,7 @@ export class GameServer {
       this.sendError(ws, "Player not spawned");
       return;
     }
+
     const result = this.gameState.joinAlliance(
       connection.playerId,
       data.allianceId,
@@ -469,6 +441,7 @@ export class GameServer {
       this.sendError(ws, "Player not spawned");
       return;
     }
+
     const result = this.gameState.leaveAlliance(connection.playerId);
     if (result.success) {
       this.sendToClient(ws, { type: "alliance_left", data: result.data });
@@ -484,6 +457,7 @@ export class GameServer {
       this.sendError(ws, "Player not spawned");
       return;
     }
+
     const result = this.gameState.kickFromAlliance(
       connection.playerId,
       data.memberId,
