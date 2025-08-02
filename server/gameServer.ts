@@ -18,10 +18,10 @@ export class GameServer {
 
   constructor() {
     this.gameState = new GameState();
-    // Start game loop (60 FPS)
+    // Start game loop (10 FPS for better network sync)
     this.gameLoop = setInterval(() => {
       this.update();
-    }, 1000 / 60);
+    }, 100);
     // Start ping interval (every 30 seconds)
     this.pingInterval = setInterval(() => {
       this.pingClients();
@@ -163,7 +163,7 @@ export class GameServer {
           data: result.data,
         });
       } else {
-        // Territory expansion successful
+        // Territory expansion successful - immediate broadcast
         const claimedTiles = result.data?.claimedTiles || [];
         for (const tileId of claimedTiles) {
           this.broadcast({
@@ -174,11 +174,21 @@ export class GameServer {
             },
           });
         }
-        // Update player stats
+        // Update player stats immediately
         this.broadcast({
           type: "player_updated",
           data: {
             player: this.gameState.getPlayer(connection.playerId),
+          },
+        });
+        // Send immediate game state update for better sync
+        this.broadcast({
+          type: "game_state",
+          data: {
+            players: Array.from(this.gameState.getPlayers().values()),
+            tiles: Array.from(this.gameState.getTiles().values()),
+            missiles: Array.from(this.gameState.getMissiles().values()),
+            gameTime: this.gameState.getGameTime(),
           },
         });
       }
@@ -203,18 +213,28 @@ export class GameServer {
       data.structureType,
     );
     if (result.success && result.data?.tile) {
-      // Broadcast structure built with full tile data
+      // Broadcast structure built with full tile data - immediate sync
       this.broadcast({
         type: "structure_built",
         data: {
           tile: result.data.tile,
         },
       });
-      // Update player stats
+      // Update player stats immediately
       this.broadcast({
         type: "player_updated",
         data: {
           player: this.gameState.getPlayer(connection.playerId),
+        },
+      });
+      // Send immediate game state update
+      this.broadcast({
+        type: "game_state",
+        data: {
+          players: Array.from(this.gameState.getPlayers().values()),
+          tiles: Array.from(this.gameState.getTiles().values()),
+          missiles: Array.from(this.gameState.getMissiles().values()),
+          gameTime: this.gameState.getGameTime(),
         },
       });
     } else {
@@ -300,9 +320,9 @@ export class GameServer {
   private update() {
     // Update game state
     this.gameState.update();
-    // Broadcast periodic updates (every 0.5 seconds)
-    if (this.gameState.getGameTime() % 50 == 0) {
-      // Approximately every 5 seconds
+    // Broadcast frequent updates for better synchronization
+    if (this.gameState.getGameTime() % 10 == 0) {
+      // Every 1 second (10 ticks at 100ms intervals)
       this.broadcast({
         type: "game_state",
         data: {
