@@ -383,6 +383,12 @@ const Globe = () => {
         const currentPoint = validPoints[currentIndex];
         const nextPoint = validPoints[nextIndex];
         
+        // Safety check for valid points
+        if (!currentPoint || !nextPoint) {
+          console.error(`Invalid trajectory points at index ${currentIndex}:`, currentPoint, nextPoint);
+          return null;
+        }
+        
         const currentPosition = new THREE.Vector3(
           currentPoint.x + segmentProgress * (nextPoint.x - currentPoint.x),
           currentPoint.y + segmentProgress * (nextPoint.y - currentPoint.y),

@@ -419,6 +419,12 @@ export class GameState {
       const y = fromPos[1] + t * (toPos[1] - fromPos[1]);
       const z = fromPos[2] + t * (toPos[2] - fromPos[2]);
       
+      // Validate interpolated coordinates
+      if (isNaN(x) || isNaN(y) || isNaN(z)) {
+        console.error(`Invalid interpolated coordinates at t=${t}: x=${x}, y=${y}, z=${z}`);
+        continue;
+      }
+      
       // Normalize to sphere and add height
       const currentRadius = Math.sqrt(x * x + y * y + z * z);
       const normalizedX = x / currentRadius;
