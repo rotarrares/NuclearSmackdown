@@ -436,11 +436,11 @@ const Globe = () => {
           <group key={`missile-${missile.id}`}>
             {/* Main trajectory tube */}
             <mesh>
-              <tubeGeometry args={[curve, 64, 0.008, 8, false]} />
+              <tubeGeometry args={[curve, 64, 0.003, 8, false]} />
               <meshBasicMaterial
                 color={0xffffff}
                 transparent={true}
-                opacity={0.9}
+                opacity={0.8}
               />
             </mesh>
             

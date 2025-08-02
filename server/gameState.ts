@@ -423,8 +423,8 @@ export class GameState {
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       
-      // High ballistic arc
-      const arcHeight = Math.sin(t * Math.PI) * 1.5; // High altitude trajectory
+      // Lower ballistic arc - closer to surface
+      const arcHeight = Math.sin(t * Math.PI) * 0.3; // Lower altitude trajectory
       
       // Linear interpolation between actual tile positions
       const x = fromX + t * (toX - fromX);
