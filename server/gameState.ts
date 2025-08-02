@@ -408,6 +408,16 @@ export class GameState {
     
     console.log(`Creating trajectory from actual positions:`, fromPos, `to:`, toPos);
     
+    // Extract coordinates properly from Vector3 objects
+    const fromX = fromPos.x;
+    const fromY = fromPos.y;
+    const fromZ = fromPos.z;
+    const toX = toPos.x;
+    const toY = toPos.y;
+    const toZ = toPos.z;
+    
+    console.log(`Using coordinates: from=[${fromX}, ${fromY}, ${fromZ}], to=[${toX}, ${toY}, ${toZ}]`);
+    
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       
@@ -415,9 +425,9 @@ export class GameState {
       const arcHeight = Math.sin(t * Math.PI) * 1.5; // High altitude trajectory
       
       // Linear interpolation between actual tile positions
-      const x = fromPos[0] + t * (toPos[0] - fromPos[0]);
-      const y = fromPos[1] + t * (toPos[1] - fromPos[1]);
-      const z = fromPos[2] + t * (toPos[2] - fromPos[2]);
+      const x = fromX + t * (toX - fromX);
+      const y = fromY + t * (toY - fromY);
+      const z = fromZ + t * (toZ - fromZ);
       
       // Validate interpolated coordinates
       if (isNaN(x) || isNaN(y) || isNaN(z)) {
