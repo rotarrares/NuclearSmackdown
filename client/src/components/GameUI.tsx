@@ -237,7 +237,12 @@ const GameUI = () => {
               </button>
             </div>
             <div style={{ fontSize: '14px', marginTop: '5px' }}>
-              Troops: {currentPlayer.conquestTroops || 0}
+              Troops Remaining: <strong>{Math.max(0, currentPlayer.conquestTroops || 0).toFixed(0)}</strong>
+            </div>
+            <div style={{ fontSize: '12px', color: '#ffcc99', marginTop: '2px' }}>
+              {(currentPlayer.conquestTroops || 0) > 0 
+                ? "Expanding territory..." 
+                : "Conquest ending - no troops left"}
             </div>
           </div>
         )}

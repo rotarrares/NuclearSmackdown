@@ -377,13 +377,13 @@ export class GameState {
         const adjacentTileIds = this.adjacencyMap.get(ownedTile.id) || [];
         adjacentTileIds.forEach(adjId => {
           const adjTile = this.tiles.get(adjId);
-          if (adjTile && !adjTile.ownerId && adjTile.terrainType !== 'water') {
+          // Only count conquerable terrain (exclude water and mountains)
+          if (adjTile && !adjTile.ownerId && adjTile.terrainType !== 'water' && adjTile.terrainType !== 'mountain') {
             adjacentUnclaimedCount++;
             // Calculate troop loss based on terrain
             switch (adjTile.terrainType) {
               case 'grass': averageTerrainDifficulty += 5; break;
               case 'desert': averageTerrainDifficulty += 10; break;
-              case 'mountain': averageTerrainDifficulty += 15; break;
             }
           }
         });
@@ -411,7 +411,8 @@ export class GameState {
       const adjacentTileIds = this.adjacencyMap.get(ownedTile.id) || [];
       adjacentTileIds.forEach(adjTileId => {
         const adjTile = this.tiles.get(adjTileId);
-        if (adjTile && !adjTile.ownerId) {
+        // Only consider conquerable tiles (exclude water and mountains)
+        if (adjTile && !adjTile.ownerId && adjTile.terrainType !== 'water' && adjTile.terrainType !== 'mountain') {
           // Count how many adjacent tiles are owned by this player
           const adjToAdj = this.adjacencyMap.get(adjTileId) || [];
           const adjacentOwned = adjToAdj.filter(id => {
@@ -461,16 +462,24 @@ export class GameState {
       targetTile.ownerId = player.id;
       targetTile.population = Math.floor(player.population / 10); // Some population moves to new tile
       
+      console.log(`Player ${player.id} conquered tile ${randomCandidate.tileId} (${targetTile.terrainType})`);
+      
       // Broadcast territory claim event for real-time updates
       return {
         type: 'territory_claimed',
         tileId: randomCandidate.tileId,
         playerId: player.id,
-        population: targetTile.population
+        population: targetTile.population,
+        conquestProgress: true // Mark that progress was made
       };
     }
     
-    return null;
+    // No tile was conquered this round
+    return {
+      type: 'conquest_no_progress',
+      playerId: player.id,
+      conquestProgress: false
+    };
   }
 
   buildStructure(
@@ -539,11 +548,19 @@ export class GameState {
         if (conquestEvent) {
           // Store conquest events for broadcasting
           this.conquestEvents.push({ ...conquestEvent, playerId: player.id });
+          
+          // Stop conquest if no progress was made in this wave
+          if (!conquestEvent.conquestProgress) {
+            player.isConquering = false;
+            player.conquestTroops = 0;
+            console.log(`Player ${player.id} conquest stopped - no conquerable territory available`);
+          }
         }
         
         // Stop conquest if no troops left
         if (player.conquestTroops <= 0) {
           player.isConquering = false;
+          console.log(`Player ${player.id} conquest stopped - no troops remaining`);
         }
       }
 
