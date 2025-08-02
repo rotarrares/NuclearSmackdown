@@ -39,7 +39,14 @@ const GameUI = () => {
     );
   }
 
-  if (gamePhase === 'waiting' && !currentPlayer) {
+  if (!currentPlayer) {
+    return null;
+  }
+
+  // Check if player has no territory - show spawn selection message  
+  const ownedTiles = Array.from(tiles.values()).filter(t => t.ownerId === currentPlayer.id).length;
+  
+  if (ownedTiles === 0) {
     return (
       <div style={{
         position: 'absolute',
@@ -53,34 +60,22 @@ const GameUI = () => {
         textAlign: 'center',
         maxWidth: '400px'
       }}>
-        <h1 style={{ margin: '0 0 20px 0', fontSize: '28px' }}>🌍 OpenFront.io</h1>
-        <p style={{ margin: '0 0 20px 0', fontSize: '16px' }}>
-          A global strategy game where you manage population, build cities, and dominate the world.
+        <h1 style={{ margin: '0 0 20px 0', fontSize: '28px' }}>🌍 Choose Your Territory</h1>
+        <p style={{ margin: '0 0 20px 0', lineHeight: '1.4' }}>
+          Click on any unclaimed grass or desert tile on the globe to establish your starting territory.
+          You'll begin with 500 population to start your empire.
         </p>
-        <button
-          onClick={spawnPlayer}
-          style={{
-            padding: '12px 24px',
-            fontSize: '16px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Join Game
-        </button>
+        <div style={{ fontSize: '14px', color: '#ccc' }}>
+          <div>🟢 Green = Grass (good starting location)</div>
+          <div>🟡 Yellow = Desert (harder but viable)</div>
+          <div>🔵 Blue = Water (cannot claim)</div>
+          <div>⚫ Gray = Mountains (cannot claim)</div>
+        </div>
       </div>
     );
   }
 
-  if (!currentPlayer) {
-    return null;
-  }
-
   const totalPlayers = players.size;
-  const ownedTiles = Array.from(tiles.values()).filter(t => t.ownerId === currentPlayer.id).length;
 
   return (
     <>
@@ -239,7 +234,7 @@ const GameUI = () => {
         <h4 style={{ margin: '0 0 8px 0' }}>Controls</h4>
         <div>🖱️ Drag to rotate globe</div>
         <div>🔍 Scroll to zoom</div>
-        <div>🎯 Click unclaimed tiles to conquer</div>
+        <div>🎯 Click unclaimed tiles to start conquest</div>
         <div>⚖️ Balance workers vs soldiers</div>
         <div>🎯 Set troop deployment level</div>
         <div>⚔️ Conquest uses deployed troops</div>

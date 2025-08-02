@@ -76,27 +76,7 @@ export class GameState {
     );
   }
 
-  private assignSpawnTile(playerId: string): void {
-    // Find a suitable spawn location (unclaimed grass or desert tile)
-    const suitableTiles = Array.from(this.tiles.values()).filter(tile => 
-      !tile.ownerId && 
-      (tile.terrainType === 'grass' || tile.terrainType === 'desert')
-    );
-    
-    if (suitableTiles.length > 0) {
-      // Pick a random suitable tile
-      const spawnTile = suitableTiles[Math.floor(Math.random() * suitableTiles.length)];
-      spawnTile.ownerId = playerId;
-      spawnTile.population = 500; // Starting population on spawn tile
-      
-      const player = this.players.get(playerId);
-      if (player) {
-        player.spawnTileId = spawnTile.id;
-      }
-      
-      console.log(`Player ${playerId} spawned at tile ${spawnTile.id}`);
-    }
-  }
+
 
   spawnPlayer(username: string): Player {
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -121,16 +101,12 @@ export class GameState {
       troopDeployment: 0.5,
       conquestTroops: 0,
       isConquering: false,
-      spawnTileId: 0, // Will be set by assignSpawnTile
+      spawnTileId: 0, // Will be set when player selects first tile
       joinedAt: Date.now(),
       lastActive: Date.now(),
       lastPopulationGrowth: Date.now(),
     };
     this.players.set(playerId, player);
-    
-    // Auto-assign spawn tile for new player
-    this.assignSpawnTile(playerId);
-    
     return player;
   }
 
@@ -338,6 +314,15 @@ export class GameState {
     const playerTiles = Array.from(this.tiles.values()).filter(t => t.ownerId === playerId);
     if (playerTiles.length > 0 && !this.isAdjacentToOwnTerritory(playerId, tileId)) {
       return { success: false, error: "Tile not adjacent to your territory" };
+    }
+    
+    // If this is the player's first tile, set it as spawn tile and give starting population
+    if (playerTiles.length === 0) {
+      tile.ownerId = playerId;
+      tile.population = 500; // Starting population
+      player.spawnTileId = tileId;
+      console.log(`Player ${playerId} selected spawn tile ${tileId}`);
+      return { success: true, data: { type: "conquest_started", tileId, isFirstTile: true } };
     }
     
     // Start conquest
