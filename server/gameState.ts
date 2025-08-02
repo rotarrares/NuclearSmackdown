@@ -390,35 +390,52 @@ export class GameState {
     // Generate simple test trajectory
     console.log(`Creating missile from tile ${fromTileId} to tile ${toTileId}`);
     
-    // Create realistic ballistic missile trajectory
+    // Get actual tile positions from tile data
+    const fromTileData = this.tileData.find((t) => t.id === fromTileId);
+    const toTileData = this.tileData.find((t) => t.id === toTileId);
+    
+    if (!fromTileData || !toTileData) {
+      console.error(`Tile data not found for missile trajectory: from=${fromTileId}, to=${toTileId}`);
+      return { success: false, error: "Tile data not found" };
+    }
+    
+    // Create realistic ballistic missile trajectory using actual tile positions
     const trajectory: [number, number, number][] = [];
-    const steps = 30; // More detailed trajectory
+    const steps = 30;
+    
+    const fromPos = fromTileData.center;
+    const toPos = toTileData.center;
+    
+    console.log(`Creating trajectory from actual positions:`, fromPos, `to:`, toPos);
     
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       
-      // High ballistic arc - missiles reach very high altitude
-      const arcHeight = Math.sin(t * Math.PI) * 2.5; // Even higher for intercontinental effect
-      const radius = 1.0 + arcHeight;
+      // High ballistic arc
+      const arcHeight = Math.sin(t * Math.PI) * 1.5; // High altitude trajectory
       
-      // Interpolate between launch and target coordinates using tile IDs
-      const fromAngle = (fromTileId % 360) * Math.PI / 180;
-      const toAngle = (toTileId % 360) * Math.PI / 180;
-      const fromPhi = ((fromTileId % 180) - 90) * Math.PI / 180;
-      const toPhi = ((toTileId % 180) - 90) * Math.PI / 180;
+      // Linear interpolation between actual tile positions
+      const x = fromPos[0] + t * (toPos[0] - fromPos[0]);
+      const y = fromPos[1] + t * (toPos[1] - fromPos[1]);
+      const z = fromPos[2] + t * (toPos[2] - fromPos[2]);
       
-      // Spherical interpolation for more realistic earth trajectory
-      const currentAngle = fromAngle + t * (toAngle - fromAngle);
-      const currentPhi = fromPhi + t * (toPhi - fromPhi);
+      // Normalize to sphere and add height
+      const currentRadius = Math.sqrt(x * x + y * y + z * z);
+      const normalizedX = x / currentRadius;
+      const normalizedY = y / currentRadius;
+      const normalizedZ = z / currentRadius;
       
-      const x = Math.cos(currentPhi) * Math.cos(currentAngle) * radius;
-      const y = Math.sin(currentPhi) * radius;
-      const z = Math.cos(currentPhi) * Math.sin(currentAngle) * radius;
-      
-      trajectory.push([x, y, z]);
+      // Apply ballistic arc
+      const finalRadius = 1.0 + arcHeight;
+      trajectory.push([
+        normalizedX * finalRadius,
+        normalizedY * finalRadius,
+        normalizedZ * finalRadius
+      ]);
     }
     
     console.log(`Generated ballistic trajectory with ${trajectory.length} points from tile ${fromTileId} to ${toTileId}`);
+    console.log(`First point:`, trajectory[0], `Last point:`, trajectory[trajectory.length - 1]);
     const travelTime = 4000; // 4 seconds travel time for better visibility
     const missile: Missile = {
       id: `missile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

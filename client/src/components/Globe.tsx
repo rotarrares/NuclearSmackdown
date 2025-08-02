@@ -367,11 +367,27 @@ const Globe = () => {
         
         const curve = new THREE.CatmullRomCurve3(validPoints);
         
-        // Calculate missile progress for animation
+        // Calculate missile progress for smooth animation
         const elapsedTime = Date.now() - missile.launchTime;
         const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
-        const currentIndex = Math.floor(progress * (validPoints.length - 1));
-        const currentPosition = validPoints[currentIndex] || validPoints[0];
+        
+        // Smooth interpolation between trajectory points
+        const segmentLength = 1 / (validPoints.length - 1);
+        const currentSegment = Math.floor(progress / segmentLength);
+        const segmentProgress = (progress % segmentLength) / segmentLength;
+        
+        const currentIndex = Math.min(currentSegment, validPoints.length - 2);
+        const nextIndex = Math.min(currentIndex + 1, validPoints.length - 1);
+        
+        // Interpolate between current and next point for smooth movement
+        const currentPoint = validPoints[currentIndex];
+        const nextPoint = validPoints[nextIndex];
+        
+        const currentPosition = new THREE.Vector3(
+          currentPoint.x + segmentProgress * (nextPoint.x - currentPoint.x),
+          currentPoint.y + segmentProgress * (nextPoint.y - currentPoint.y),
+          currentPoint.z + segmentProgress * (nextPoint.z - currentPoint.z)
+        );
        
         return (
           <group key={`missile-${missile.id}`}>
@@ -385,10 +401,20 @@ const Globe = () => {
               />
             </mesh>
             
-            {/* Animated missile warhead */}
+            {/* Animated missile warhead with glow effect */}
             <mesh position={currentPosition}>
-              <sphereGeometry args={[0.015, 8, 8]} />
-              <meshBasicMaterial color={0xff4444} />
+              <sphereGeometry args={[0.02, 12, 12]} />
+              <meshBasicMaterial color={0xff2222} />
+            </mesh>
+            
+            {/* Missile glow halo */}
+            <mesh position={currentPosition}>
+              <sphereGeometry args={[0.035, 8, 8]} />
+              <meshBasicMaterial 
+                color={0xff4444}
+                transparent={true}
+                opacity={0.3}
+              />
             </mesh>
             
             {/* Trajectory marker points */}
