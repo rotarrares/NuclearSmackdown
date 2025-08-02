@@ -473,8 +473,8 @@ export class GameState {
         const sinAngle = Math.sin(angle);
         const a = Math.sin((1 - t) * angle) / sinAngle;
         const b = Math.sin(t * angle) / sinAngle;
-        // Add height for ballistic trajectory
-        const height = Math.sin(t * Math.PI) * 0.3; // Peak at middle of trajectory
+        // Add height for ballistic trajectory - much higher arc
+        const height = Math.sin(t * Math.PI) * 0.8; // Peak at middle of trajectory, much higher
         const radius = 1.0 + height; // Base radius plus height
         const x = (a * fromVec[0] + b * toVec[0]) * radius;
         const y = (a * fromVec[1] + b * toVec[1]) * radius;

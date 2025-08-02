@@ -318,6 +318,7 @@ const Globe = () => {
         }
 
         console.log(`Rendering trajectory for missile ${missile.id} with ${missile.trajectory.length} points`);
+        console.log(`Trajectory points:`, missile.trajectory.slice(0, 3), '...', missile.trajectory.slice(-3));
 
         const points = missile.trajectory.map(
           (point: [number, number, number]) => new THREE.Vector3(...point),
@@ -325,22 +326,27 @@ const Globe = () => {
 
         return (
           <group key={`missile-group-${missile.id}`}>
-            {/* Use a thick white tube for better visibility */}
+            {/* Use a very thick, bright white tube for maximum visibility */}
             <mesh>
-              <tubeGeometry args={[new THREE.CatmullRomCurve3(points), 64, 0.008, 8, false]} />
+              <tubeGeometry args={[new THREE.CatmullRomCurve3(points), 64, 0.015, 8, false]} />
               <meshBasicMaterial
                 color={0xffffff}
                 transparent={false}
                 opacity={1.0}
               />
             </mesh>
-            {/* Add bright trajectory points for visibility */}
-            {points.slice(0, 10).map((point: THREE.Vector3, index: number) => (
+            {/* Add large bright trajectory points for visibility */}
+            {points.map((point: THREE.Vector3, index: number) => (
               <mesh key={`point-${missile.id}-${index}`} position={point}>
-                <sphereGeometry args={[0.005, 8, 8]} />
+                <sphereGeometry args={[0.008, 8, 8]} />
                 <meshBasicMaterial color={0xffff00} />
               </mesh>
             ))}
+            {/* Add a moving missile sphere */}
+            <mesh position={points[Math.floor(points.length * 0.5)]}>
+              <sphereGeometry args={[0.012, 8, 8]} />
+              <meshBasicMaterial color={0xff0000} />
+            </mesh>
           </group>
         );
       })}
