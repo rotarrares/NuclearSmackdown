@@ -30,6 +30,7 @@ export interface Player {
   spawnTileId: number; // ID of the tile where player spawned
   joinedAt: number; // Timestamp when player joined
   lastActive: number;
+  lastConquestUpdate?: number; // Timestamp of last conquest troop depletion
   allianceId?: string;
   lastPopulationGrowth: number;
 }

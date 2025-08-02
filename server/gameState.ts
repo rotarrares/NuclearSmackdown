@@ -358,12 +358,52 @@ export class GameState {
       return;
     }
 
-    // Get all owned tiles by this player
+    // Deplete troops based on terrain difficulty every 100ms
+    const now = Date.now();
+    const timeSinceLastUpdate = now - (player.lastConquestUpdate || now);
+    
+    if (timeSinceLastUpdate >= 100) { // Process every 100ms
+      // Get all owned tiles by this player to find terrain types being conquered
+      const ownedTiles = Array.from(this.tiles.values()).filter(
+        tile => tile.ownerId === player.id
+      );
+
+      // Find adjacent unclaimed tiles to determine conquest difficulty
+      let averageTerrainDifficulty = 10; // Default moderate difficulty
+      let adjacentUnclaimedCount = 0;
+      
+      ownedTiles.forEach(ownedTile => {
+        const adjacentTileIds = this.adjacencyMap.get(ownedTile.id) || [];
+        adjacentTileIds.forEach(adjId => {
+          const adjTile = this.tiles.get(adjId);
+          if (adjTile && !adjTile.ownerId && adjTile.terrainType !== 'water') {
+            adjacentUnclaimedCount++;
+            // Calculate troop loss based on terrain
+            switch (adjTile.terrainType) {
+              case 'grass': averageTerrainDifficulty += 5; break;
+              case 'desert': averageTerrainDifficulty += 10; break;
+              case 'mountain': averageTerrainDifficulty += 15; break;
+            }
+          }
+        });
+      });
+      
+      if (adjacentUnclaimedCount > 0) {
+        averageTerrainDifficulty = averageTerrainDifficulty / adjacentUnclaimedCount;
+      }
+      
+      // Deplete troops based on difficulty
+      const troopLoss = Math.ceil(averageTerrainDifficulty * (timeSinceLastUpdate / 100));
+      player.conquestTroops = Math.max(0, player.conquestTroops - troopLoss);
+      player.lastConquestUpdate = now;
+      
+      console.log(`Player ${player.id} conquest: ${player.conquestTroops} troops remaining (lost ${troopLoss})`);
+    }
+
+    // Find all unclaimed adjacent tiles for potential conquest
     const ownedTiles = Array.from(this.tiles.values()).filter(
       tile => tile.ownerId === player.id
     );
-
-    // Find all unclaimed adjacent tiles
     const candidateTiles: { tileId: number; adjacentOwned: number; terrainType: string }[] = [];
     
     ownedTiles.forEach(ownedTile => {

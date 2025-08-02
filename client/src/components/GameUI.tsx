@@ -271,6 +271,7 @@ const GameUI = () => {
         <div>🖱️ Drag to rotate globe</div>
         <div>🔍 Scroll to zoom</div>
         <div>🎯 Click unclaimed tiles to start conquest</div>
+        <div>⬆️ Shift+Click to launch missiles</div>
         <div>⚖️ Balance workers vs soldiers</div>
         <div>🎯 Set troop deployment level</div>
         <div>⚔️ Conquest uses deployed troops</div>

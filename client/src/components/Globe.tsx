@@ -329,60 +329,55 @@ const Globe = () => {
     if (event.button === 0 && mouseDownPos && !isDragging && hoveredTile && currentPlayer) {
       const gameStateTile = tiles.get(hoveredTile.id);
 
-      // Find missile silos owned by current player
-      const missileSilos = Array.from(tiles.values()).filter(
-        (tile) =>
-          tile.ownerId === currentPlayer.id &&
-          tile.structureType === "missile_silo",
-      );
 
-      // If there are missile silos and clicking on enemy/neutral tile, launch missile
-      if (
-        missileSilos.length > 0 &&
-        (!gameStateTile?.ownerId || gameStateTile.ownerId !== currentPlayer.id)
-      ) {
-        // Prevent rapid-fire missile launches (1 second cooldown)
-        const now = Date.now();
-        if (now - lastMissileLaunch < 1000) {
-          console.log("Missile launch on cooldown");
-          setMouseDownPos(null);
-          setIsDragging(false);
-          return;
-        }
 
-        // Use the first available missile silo
-        const silo = missileSilos[0];
+      // Handle different click actions based on key modifiers
+      const isShiftClick = event.shiftKey;
 
-        launchMissile(silo.id, hoveredTile.id);
-        setLastMissileLaunch(now);
-
-        console.log(
-          `LEFT CLICK: Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}`,
+      // SHIFT + Click = Launch Missile (if missile silos exist)
+      if (isShiftClick) {
+        const missileSilos = Array.from(tiles.values()).filter(
+          (tile) =>
+            tile.ownerId === currentPlayer.id &&
+            tile.structureType === "missile_silo",
         );
 
-        setMouseDownPos(null);
-        setIsDragging(false);
-        return;
-      }
+        if (missileSilos.length > 0 && (!gameStateTile?.ownerId || gameStateTile.ownerId !== currentPlayer.id)) {
+          // Prevent rapid-fire missile launches (1 second cooldown)
+          const now = Date.now();
+          if (now - lastMissileLaunch < 1000) {
+            console.log("Missile launch on cooldown");
+            setMouseDownPos(null);
+            setIsDragging(false);
+            return;
+          }
 
-      // If tile is unowned, start conquest
-      if (!gameStateTile?.ownerId) {
-        startConquest(hoveredTile.id);
-      } else if (gameStateTile.ownerId === currentPlayer.id) {
-        // Show building options for owned tiles - use game state store
-        useGameState.getState().setBuildingOptions({
-          tileId: hoveredTile.id,
-          canBuildPort: true, // Will be determined by server
-          position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-        });
+          // Use the first available missile silo
+          const silo = missileSilos[0];
+          launchMissile(silo.id, hoveredTile.id);
+          setLastMissileLaunch(now);
+          console.log(`SHIFT+CLICK: Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}`);
+        }
       } else {
-        console.log("Clicked enemy tile:", hoveredTile.id);
+        // Regular Click = Territory actions
+        if (!gameStateTile?.ownerId) {
+          // Unowned tile - start conquest
+          startConquest(hoveredTile.id);
+        } else if (gameStateTile.ownerId === currentPlayer.id) {
+          // Owned tile - show building options
+          useGameState.getState().setBuildingOptions({
+            tileId: hoveredTile.id,
+            canBuildPort: true, // Will be determined by server
+            canBuildCity: true,
+            canBuildMissileSilo: true,
+          });
+        }
       }
     }
     
     setMouseDownPos(null);
     setIsDragging(false);
-  }, [mouseDownPos, isDragging, hoveredTile, currentPlayer, tiles, selectTile, launchMissile, lastMissileLaunch]);
+  }, [mouseDownPos, isDragging, hoveredTile, currentPlayer, tiles, launchMissile, lastMissileLaunch, startConquest]);
 
   return (
     <group>
