@@ -408,66 +408,45 @@ const Globe = () => {
         const elapsedTime = Date.now() - missile.launchTime;
         const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
         
-        // Smooth interpolation between trajectory points
-        const segmentLength = 1 / (validPoints.length - 1);
-        const currentSegment = Math.floor(progress / segmentLength);
-        const segmentProgress = (progress % segmentLength) / segmentLength;
-        
-        const currentIndex = Math.min(currentSegment, validPoints.length - 2);
-        const nextIndex = Math.min(currentIndex + 1, validPoints.length - 1);
-        
-        // Interpolate between current and next point for smooth movement
-        const currentPoint = validPoints[currentIndex];
-        const nextPoint = validPoints[nextIndex];
-        
-        // Safety check for valid points
-        if (!currentPoint || !nextPoint) {
-          console.error(`Invalid trajectory points at index ${currentIndex}:`, currentPoint, nextPoint);
-          return null;
-        }
-        
-        const currentPosition = new THREE.Vector3(
-          currentPoint.x + segmentProgress * (nextPoint.x - currentPoint.x),
-          currentPoint.y + segmentProgress * (nextPoint.y - currentPoint.y),
-          currentPoint.z + segmentProgress * (nextPoint.z - currentPoint.z)
-        );
+        // Use curve for smooth trajectory following
+        const currentPosition = curve.getPoint(progress);
        
         return (
           <group key={`missile-${missile.id}`}>
-            {/* Main trajectory tube */}
+            {/* Main trajectory tube - optimized */}
             <mesh>
-              <tubeGeometry args={[curve, 64, 0.003, 8, false]} />
+              <tubeGeometry args={[curve, 32, 0.003, 6, false]} />
               <meshBasicMaterial
                 color={0xffffff}
                 transparent={true}
-                opacity={0.8}
+                opacity={0.6}
               />
             </mesh>
             
-            {/* Animated missile warhead with glow effect */}
+            {/* Animated missile warhead - optimized */}
             <mesh position={currentPosition}>
-              <sphereGeometry args={[0.02, 12, 12]} />
+              <sphereGeometry args={[0.015, 8, 8]} />
               <meshBasicMaterial color={0xff2222} />
             </mesh>
             
-            {/* Missile glow halo */}
+            {/* Reduced glow halo for performance */}
             <mesh position={currentPosition}>
-              <sphereGeometry args={[0.035, 8, 8]} />
+              <sphereGeometry args={[0.025, 6, 6]} />
               <meshBasicMaterial 
                 color={0xff4444}
                 transparent={true}
-                opacity={0.3}
+                opacity={0.2}
               />
             </mesh>
             
-            {/* Trajectory marker points */}
-            {validPoints.slice(0, validPoints.length).filter((_, i) => i % 3 === 0).map((point: THREE.Vector3, index: number) => (
+            {/* Fewer trajectory marker points for performance */}
+            {validPoints.filter((_, i) => i % 5 === 0).map((point: THREE.Vector3, index: number) => (
               <mesh key={`marker-${missile.id}-${index}`} position={point}>
-                <sphereGeometry args={[0.005, 6, 6]} />
+                <sphereGeometry args={[0.004, 4, 4]} />
                 <meshBasicMaterial 
                   color={0xffff44}
                   transparent={true}
-                  opacity={0.7}
+                  opacity={0.5}
                 />
               </mesh>
             ))}

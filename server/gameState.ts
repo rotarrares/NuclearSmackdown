@@ -454,7 +454,7 @@ export class GameState {
     
     console.log(`Generated ballistic trajectory with ${trajectory.length} points from tile ${fromTileId} to ${toTileId}`);
     console.log(`First point:`, trajectory[0], `Last point:`, trajectory[trajectory.length - 1]);
-    const travelTime = 4000; // 4 seconds travel time for better visibility
+    const travelTime = 15000; // 15 seconds travel time
     const missile: Missile = {
       id: `missile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       fromTileId,
