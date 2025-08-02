@@ -370,6 +370,8 @@ export class GameState {
     fromTileId: number,
     toTileId: number,
   ): ActionResult {
+    console.log(`Missile launch request: player=${playerId}, from=${fromTileId}, to=${toTileId}`);
+    
     const player = this.players.get(playerId);
     const fromTile = this.tiles.get(fromTileId);
     const toTile = this.tiles.get(toTileId);

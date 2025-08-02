@@ -36,6 +36,7 @@ const Globe = () => {
 
   const [isHovering, setIsHovering] = useState(false);
   const [missilesSoundTracked, setMissilesSoundTracked] = useState(new Set<string>());
+  const [lastMissileLaunch, setLastMissileLaunch] = useState(0);
 
   // Generate globe geometry once
 
@@ -214,11 +215,18 @@ const Globe = () => {
         missileSilos.length > 0 &&
         (!gameStateTile?.ownerId || gameStateTile.ownerId !== currentPlayer.id)
       ) {
-        // Use the first available missile silo
+        // Prevent rapid-fire missile launches (1 second cooldown)
+        const now = Date.now();
+        if (now - lastMissileLaunch < 1000) {
+          console.log("Missile launch on cooldown");
+          return;
+        }
 
+        // Use the first available missile silo
         const silo = missileSilos[0];
 
         launchMissile(silo.id, hoveredTile.id);
+        setLastMissileLaunch(now);
 
         console.log(
           `Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}`,
