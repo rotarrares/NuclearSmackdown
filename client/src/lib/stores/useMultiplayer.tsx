@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useGameState } from "./useGameState";
 import { Player, GameTile } from "../types/game";
-import { Missile } from "../../../shared/schema";
+import { Missile } from "../../shared/schema";
 
 interface MultiplayerState {
   socket: WebSocket | null;
@@ -16,6 +16,7 @@ interface MultiplayerState {
   expandTerritory: (tileId: number) => void;
   adjustWorkerRatio: (ratio: number) => void;
   adjustTroopDeployment: (deployment: number) => void;
+  startConquest: (tileId: number) => void;
   cancelConquest: () => void;
   buildStructure: (tileId: number, structureType: 'city' | 'port' | 'missile_silo') => void;
   launchMissile: (fromTileId: number, toTileId: number) => void;

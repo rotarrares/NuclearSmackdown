@@ -13,7 +13,8 @@ import { useMultiplayer } from "../lib/stores/useMultiplayer";
 
 import { useAudio } from "../lib/stores/useAudio";
 
-import { Tile, Player, Missile } from "../lib/types/game";
+import { Tile, Player } from "../lib/types/game";
+import { Missile } from "../../shared/schema";
 
 // Separate component for smooth missile animation
 const MissileRenderer = ({ missile, curve, validPoints }: {
@@ -368,8 +369,7 @@ const Globe = () => {
           useGameState.getState().setBuildingOptions({
             tileId: hoveredTile.id,
             canBuildPort: true, // Will be determined by server
-            canBuildCity: true,
-            canBuildMissileSilo: true,
+            position: { x: 0, y: 0 }
           });
         }
       }

@@ -324,7 +324,7 @@ export class GameState {
     }
 
     // Calculate available troops for conquest (for non-first tiles)
-    const soldiers = Math.floor(player.population * player.workerRatio);
+    const soldiers = Math.floor(player.population * (1 - player.workerRatio));
     const deployedTroops = Math.floor(soldiers * player.troopDeployment);
     
     if (deployedTroops < 50) {
