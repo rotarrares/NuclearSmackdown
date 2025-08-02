@@ -27,6 +27,8 @@ export interface Player {
   troopDeployment: number; // 0-1, percentage of soldiers to deploy for combat/expansion
   conquestTroops: number; // Number of troops currently allocated to conquering
   isConquering: boolean; // Whether player is actively conquering
+  spawnTileId: number; // ID of the tile where player spawned
+  joinedAt: number; // Timestamp when player joined
   lastActive: number;
   allianceId?: string;
   lastPopulationGrowth: number;
