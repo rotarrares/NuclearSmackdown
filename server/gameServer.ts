@@ -426,10 +426,12 @@ export class GameServer {
           type: "conquest_progress",
           data: {
             playerId: event.playerId,
-            conquestTroops: player.conquestTroops,
-            isConquering: player.isConquering
+            conquestTroops: Math.max(0, player.conquestTroops),
+            isConquering: player.isConquering,
+            troopsRemaining: Math.max(0, player.conquestTroops)
           }
         });
+        console.log(`Broadcasting conquest progress: Player ${event.playerId} has ${player.conquestTroops} troops remaining`);
       }
     });
     

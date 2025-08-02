@@ -284,10 +284,12 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
           
         case 'conquest_progress':
           // Real-time conquest progress updates
-          if (message.data.playerId && message.data.conquestTroops !== undefined) {
-            gameState.updatePlayer(message.data.playerId, { 
-              conquestTroops: message.data.conquestTroops,
-              isConquering: message.data.isConquering
+          const progressData = message.data as { playerId: string; conquestTroops: number; isConquering: boolean; troopsRemaining: number };
+          console.log(`Conquest progress update: Player ${progressData.playerId} has ${progressData.conquestTroops} troops remaining`);
+          if (progressData.playerId && progressData.conquestTroops !== undefined) {
+            gameState.updatePlayer(progressData.playerId, { 
+              conquestTroops: Math.max(0, progressData.conquestTroops),
+              isConquering: progressData.isConquering
             });
           }
           break;
