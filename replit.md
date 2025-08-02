@@ -45,7 +45,7 @@ The server implements a Node.js/Express architecture with WebSocket support for 
 The game loop runs at 60 FPS on the server, handling population growth, resource generation, and territory management calculations.
 
 ### Population and Economy System
-Players manage a unified population pool distributed between soldiers and workers via ratio sliders. Workers generate gold passively, which funds territorial expansion and military actions. Cities increase population caps and growth rates, while ports enable maritime advantages.
+Players manage a unified population pool distributed between soldiers and workers via ratio sliders. Workers generate gold passively, which funds territorial expansion and military actions. Population grows using the formula (sqrt(x)-(x*x)) / 2 where x is the population cap. The cap starts at 600 and increases by 100 per conquered tile. Cities increase population caps and growth rates, while ports enable maritime advantages.
 
 ### Territory and Combat System
 The spawn system places new players in low-density regions (typically polar areas). Territory expansion costs gold and follows adjacency rules. The tile-based system supports city construction, port building, and population distribution across controlled territories.

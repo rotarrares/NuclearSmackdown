@@ -532,11 +532,11 @@ export class GameState {
         (tile) => tile.ownerId === player.id,
       );
 
-      // Population growth based on formula: (sqrt(x)-(x*x)) / 6 where x is population cap
+      // Population growth based on formula: (sqrt(x)-(x*x)) / 2 where x is population cap
       const timeSinceLastGrowth = now - player.lastPopulationGrowth;
       if (timeSinceLastGrowth >= 1000) { // Check every second
         const x = player.populationCap;
-        const growthRate = Math.max(0, (Math.sqrt(x) - (x * x)) / 6);
+        const growthRate = Math.max(0, (Math.sqrt(x) - (x * x)) / 2);
         const populationGrowth = Math.floor(growthRate);
         
         // Apply growth but don't exceed population cap
