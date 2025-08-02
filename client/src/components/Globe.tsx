@@ -37,6 +37,8 @@ const Globe = () => {
   const [isHovering, setIsHovering] = useState(false);
   const [missilesSoundTracked, setMissilesSoundTracked] = useState(new Set<string>());
   const [lastMissileLaunch, setLastMissileLaunch] = useState(0);
+  const [mouseDownPos, setMouseDownPos] = useState<{x: number, y: number} | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Generate globe geometry once
 
@@ -197,12 +199,32 @@ const Globe = () => {
     [camera, raycaster, pointer, tileData, hoveredTile, setHoveredTile],
   );
 
-  const handleClick = useCallback(() => {
-    if (hoveredTile && currentPlayer) {
+  const handleMouseDown = useCallback((event: any) => {
+    // Only handle left mouse button
+    if (event.button === 0) {
+      setMouseDownPos({ x: event.clientX, y: event.clientY });
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((event: any) => {
+    if (mouseDownPos) {
+      const deltaX = Math.abs(event.clientX - mouseDownPos.x);
+      const deltaY = Math.abs(event.clientY - mouseDownPos.y);
+      
+      // If mouse moved more than 5 pixels, consider it dragging
+      if (deltaX > 5 || deltaY > 5) {
+        setIsDragging(true);
+      }
+    }
+  }, [mouseDownPos]);
+
+  const handleMouseUp = useCallback((event: any) => {
+    // Only handle left mouse button
+    if (event.button === 0 && mouseDownPos && !isDragging && hoveredTile && currentPlayer) {
       const gameStateTile = tiles.get(hoveredTile.id);
 
       // Find missile silos owned by current player
-
       const missileSilos = Array.from(tiles.values()).filter(
         (tile) =>
           tile.ownerId === currentPlayer.id &&
@@ -210,7 +232,6 @@ const Globe = () => {
       );
 
       // If there are missile silos and clicking on enemy/neutral tile, launch missile
-
       if (
         missileSilos.length > 0 &&
         (!gameStateTile?.ownerId || gameStateTile.ownerId !== currentPlayer.id)
@@ -219,6 +240,8 @@ const Globe = () => {
         const now = Date.now();
         if (now - lastMissileLaunch < 1000) {
           console.log("Missile launch on cooldown");
+          setMouseDownPos(null);
+          setIsDragging(false);
           return;
         }
 
@@ -229,31 +252,32 @@ const Globe = () => {
         setLastMissileLaunch(now);
 
         console.log(
-          `Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}`,
+          `LEFT CLICK: Launching missile from silo at tile ${silo.id} to target ${hoveredTile.id}`,
         );
 
+        setMouseDownPos(null);
+        setIsDragging(false);
         return;
       }
 
       // If tile is unowned or we want to expand, try to claim it
-
       if (!gameStateTile?.ownerId) {
         selectTile(hoveredTile.id);
       } else if (gameStateTile.ownerId === currentPlayer.id) {
         // Show building options for owned tiles - use game state store
-
         useGameState.getState().setBuildingOptions({
           tileId: hoveredTile.id,
-
           canBuildPort: true, // Will be determined by server
-
           position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
         });
       } else {
         console.log("Clicked enemy tile:", hoveredTile.id);
       }
     }
-  }, [hoveredTile, currentPlayer, tiles, selectTile, launchMissile]);
+    
+    setMouseDownPos(null);
+    setIsDragging(false);
+  }, [mouseDownPos, isDragging, hoveredTile, currentPlayer, tiles, selectTile, launchMissile, lastMissileLaunch]);
 
   return (
     <group>
@@ -262,12 +286,17 @@ const Globe = () => {
       <mesh
         ref={meshRef}
         geometry={geometry}
-        onPointerMove={handlePointerMove}
-        onClick={handleClick}
+        onPointerMove={(e) => {
+          handlePointerMove(e);
+          handleMouseMove(e);
+        }}
+        onPointerDown={handleMouseDown}
+        onPointerUp={handleMouseUp}
         onPointerLeave={() => {
           setHoveredTile(null);
-
           setIsHovering(false);
+          setMouseDownPos(null);
+          setIsDragging(false);
         }}
       >
         <meshBasicMaterial vertexColors={true} side={THREE.DoubleSide} />
