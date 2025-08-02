@@ -320,7 +320,18 @@ const Globe = () => {
         console.log(`Rendering trajectory for missile ${missile.id} with ${missile.trajectory.length} points`);
         console.log(`Trajectory points:`, missile.trajectory.slice(0, 3), '...', missile.trajectory.slice(-3));
 
-        const points = missile.trajectory.map(
+        // Check for valid trajectory points
+        const validTrajectory = missile.trajectory.filter(point => 
+          point && point.length === 3 && 
+          point.every(coord => typeof coord === 'number' && !isNaN(coord))
+        );
+        
+        if (validTrajectory.length === 0) {
+          console.error(`Missile ${missile.id} has invalid trajectory data:`, missile.trajectory);
+          return null;
+        }
+        
+        const points = validTrajectory.map(
           (point: [number, number, number]) => new THREE.Vector3(...point),
         );
 
@@ -342,11 +353,13 @@ const Globe = () => {
                 <meshBasicMaterial color={0xffff00} />
               </mesh>
             ))}
-            {/* Add a moving missile sphere */}
-            <mesh position={points[Math.floor(points.length * 0.5)]}>
-              <sphereGeometry args={[0.012, 8, 8]} />
-              <meshBasicMaterial color={0xff0000} />
-            </mesh>
+            {/* Add a large missile sphere at peak trajectory for visibility */}
+            {points.length > 0 && (
+              <mesh position={points[Math.floor(points.length * 0.5)]}>
+                <sphereGeometry args={[0.02, 8, 8]} />
+                <meshBasicMaterial color={0xff0000} />
+              </mesh>
+            )}
           </group>
         );
       })}

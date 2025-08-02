@@ -452,36 +452,48 @@ export class GameState {
   ): [number, number, number][] {
     const trajectory: [number, number, number][] = [];
     const steps = 20; // Number of points along the trajectory
-    // Convert to unit vectors
-    const fromVec = [from[0], from[1], from[2]];
-    const toVec = [to[0], to[1], to[2]];
-    // Calculate the great circle path on the sphere
+    
+    console.log(`Calculating trajectory from [${from.join(',')}] to [${to.join(',')}]`);
+    
+    // Ensure we have valid coordinates
+    if (!from || !to || from.length !== 3 || to.length !== 3) {
+      console.error('Invalid trajectory coordinates:', from, to);
+      return [];
+    }
+    
+    // Calculate the great circle path on the sphere with high ballistic arc
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
+      
       // Spherical linear interpolation (slerp)
-      const dot =
-        fromVec[0] * toVec[0] + fromVec[1] * toVec[1] + fromVec[2] * toVec[2];
+      const dot = from[0] * to[0] + from[1] * to[1] + from[2] * to[2];
       const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+      
+      let x: number, y: number, z: number;
+      
       if (angle < 0.001) {
         // Vectors are very close, use linear interpolation
-        trajectory.push([
-          fromVec[0] + t * (toVec[0] - fromVec[0]),
-          fromVec[1] + t * (toVec[1] - fromVec[1]),
-          fromVec[2] + t * (toVec[2] - fromVec[2]),
-        ]);
+        x = from[0] + t * (to[0] - from[0]);
+        y = from[1] + t * (to[1] - from[1]);
+        z = from[2] + t * (to[2] - from[2]);
       } else {
         const sinAngle = Math.sin(angle);
         const a = Math.sin((1 - t) * angle) / sinAngle;
         const b = Math.sin(t * angle) / sinAngle;
-        // Add height for ballistic trajectory - much higher arc
-        const height = Math.sin(t * Math.PI) * 0.8; // Peak at middle of trajectory, much higher
-        const radius = 1.0 + height; // Base radius plus height
-        const x = (a * fromVec[0] + b * toVec[0]) * radius;
-        const y = (a * fromVec[1] + b * toVec[1]) * radius;
-        const z = (a * fromVec[2] + b * toVec[2]) * radius;
-        trajectory.push([x, y, z]);
+        
+        x = a * from[0] + b * to[0];
+        y = a * from[1] + b * to[1];
+        z = a * from[2] + b * to[2];
       }
+      
+      // Add very high ballistic arc - missiles go way above the sphere
+      const height = Math.sin(t * Math.PI) * 1.5; // Much higher trajectory
+      const radius = 1.0 + height;
+      
+      trajectory.push([x * radius, y * radius, z * radius]);
     }
+    
+    console.log(`Generated trajectory with ${trajectory.length} points, first: [${trajectory[0]?.join(',')}], last: [${trajectory[trajectory.length-1]?.join(',')}]`);
     return trajectory;
   }
 
