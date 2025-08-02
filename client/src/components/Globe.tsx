@@ -1,4 +1,5 @@
 import { useRef, useMemo, useState, useCallback } from "react";
+import * as React from "react";
 
 import { useFrame, useThree } from "@react-three/fiber";
 
@@ -9,6 +10,8 @@ import { GlobeGeometry } from "../lib/geometry/GlobeGeometry";
 import { useGameState } from "../lib/stores/useGameState";
 
 import { useMultiplayer } from "../lib/stores/useMultiplayer";
+
+import { useAudio } from "../lib/stores/useAudio";
 
 import { Tile, Player } from "../lib/types/game";
 
@@ -29,6 +32,7 @@ const Globe = () => {
   } = useGameState();
 
   const { selectTile, buildStructure, launchMissile } = useMultiplayer();
+  const { playMissile } = useAudio();
 
   const [isHovering, setIsHovering] = useState(false);
 
@@ -310,37 +314,85 @@ const Globe = () => {
       {/* Missile trajectories */}
       {Array.from(missiles.values()).map((missile) => {
         if (!missile.trajectory || missile.trajectory.length === 0) return null;
-        
-        console.log(`Rendering missile ${missile.id} trajectory:`, missile.trajectory.slice(0, 3));
        
         const points = missile.trajectory.map((point: [number, number, number]) => new THREE.Vector3(...point));
         
         // Validate points
         const validPoints = points.filter(p => !isNaN(p.x) && !isNaN(p.y) && !isNaN(p.z));
-        if (validPoints.length === 0) {
-          console.error(`No valid points for missile ${missile.id}`);
-          return null;
-        }
+        if (validPoints.length === 0) return null;
         
         const curve = new THREE.CatmullRomCurve3(validPoints);
+        
+        // Calculate missile progress for animation
+        const elapsedTime = Date.now() - missile.launchTime;
+        const progress = Math.min(elapsedTime / missile.travelTime, 1.0);
+        const currentIndex = Math.floor(progress * (validPoints.length - 1));
+        const currentPosition = validPoints[currentIndex] || validPoints[0];
+        
+        // Trigger sound effects based on missile state
+        React.useEffect(() => {
+          if (elapsedTime < 100) {
+            // Play launch sound only once at the beginning
+            playMissile('launch');
+          } else if (progress >= 1.0 && elapsedTime - missile.travelTime < 100) {
+            // Play impact sound when missile reaches target
+            playMissile('impact');
+          }
+        }, [missile.id, elapsedTime < 100, progress >= 1.0]);
        
         return (
           <group key={`missile-${missile.id}`}>
+            {/* Main trajectory tube */}
             <mesh>
-              <tubeGeometry args={[curve, 64, 0.01, 8, false]} />
+              <tubeGeometry args={[curve, 64, 0.008, 8, false]} />
               <meshBasicMaterial
                 color={0xffffff}
-                transparent={false}
-                opacity={1.0}
+                transparent={true}
+                opacity={0.9}
               />
             </mesh>
-            {/* Add visible marker spheres */}
-            {validPoints.slice(0, 10).map((point, index) => (
+            
+            {/* Animated missile warhead */}
+            <mesh position={currentPosition}>
+              <sphereGeometry args={[0.015, 8, 8]} />
+              <meshBasicMaterial color={0xff4444} emissive={0x442222} />
+            </mesh>
+            
+            {/* Trajectory marker points */}
+            {validPoints.slice(0, validPoints.length).filter((_, i) => i % 3 === 0).map((point, index) => (
               <mesh key={`marker-${missile.id}-${index}`} position={point}>
-                <sphereGeometry args={[0.02, 8, 8]} />
-                <meshBasicMaterial color={0xff0000} />
+                <sphereGeometry args={[0.005, 6, 6]} />
+                <meshBasicMaterial 
+                  color={0xffff44}
+                  transparent={true}
+                  opacity={0.7}
+                />
               </mesh>
             ))}
+            
+            {/* Launch flash effect */}
+            {elapsedTime < 200 && (
+              <mesh position={validPoints[0]}>
+                <sphereGeometry args={[0.05, 8, 8]} />
+                <meshBasicMaterial 
+                  color={0xffffff}
+                  transparent={true}
+                  opacity={0.8}
+                />
+              </mesh>
+            )}
+            
+            {/* Impact flash effect */}
+            {progress >= 1.0 && elapsedTime - missile.travelTime < 500 && (
+              <mesh position={validPoints[validPoints.length - 1]}>
+                <sphereGeometry args={[0.08, 12, 12]} />
+                <meshBasicMaterial 
+                  color={0xff4400}
+                  transparent={true}
+                  opacity={Math.max(0, 1 - (elapsedTime - missile.travelTime) / 500)}
+                />
+              </mesh>
+            )}
           </group>
         );
       })}

@@ -15,6 +15,7 @@ interface AudioState {
   toggleMute: () => void;
   playHit: () => void;
   playSuccess: () => void;
+  playMissile: (phase: 'launch' | 'impact') => void;
 }
 
 export const useAudio = create<AudioState>((set, get) => ({
@@ -70,5 +71,20 @@ export const useAudio = create<AudioState>((set, get) => ({
         console.log("Success sound play prevented:", error);
       });
     }
+  },
+  
+  playMissile: (phase: 'launch' | 'impact') => {
+    const { isMuted } = get();
+    if (isMuted) {
+      console.log(`Missile ${phase} sound skipped (muted)`);
+      return;
+    }
+    
+    // Play different sounds for different phases
+    const audio = new Audio(phase === 'launch' ? '/sounds/launch.wav' : '/sounds/explosion.wav');
+    audio.volume = 0.5;
+    audio.play().catch(error => {
+      console.log(`Missile ${phase} sound play prevented:`, error);
+    });
   }
 }));

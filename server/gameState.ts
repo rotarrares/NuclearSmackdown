@@ -390,27 +390,36 @@ export class GameState {
     // Generate simple test trajectory
     console.log(`Creating missile from tile ${fromTileId} to tile ${toTileId}`);
     
-    // Create a simple high-arc trajectory for testing
+    // Create realistic ballistic missile trajectory
     const trajectory: [number, number, number][] = [];
-    for (let i = 0; i <= 20; i++) {
-      const t = i / 20;
-      const height = Math.sin(t * Math.PI) * 2.0; // High arc
-      const radius = 1.0 + height;
+    const steps = 30; // More detailed trajectory
+    
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
       
-      // Simple interpolation between two points on sphere
+      // High ballistic arc - missiles reach very high altitude
+      const arcHeight = Math.sin(t * Math.PI) * 2.5; // Even higher for intercontinental effect
+      const radius = 1.0 + arcHeight;
+      
+      // Interpolate between launch and target coordinates using tile IDs
       const fromAngle = (fromTileId % 360) * Math.PI / 180;
       const toAngle = (toTileId % 360) * Math.PI / 180;
-      const currentAngle = fromAngle + t * (toAngle - fromAngle);
+      const fromPhi = ((fromTileId % 180) - 90) * Math.PI / 180;
+      const toPhi = ((toTileId % 180) - 90) * Math.PI / 180;
       
-      const x = Math.cos(currentAngle) * radius;
-      const y = Math.sin(currentAngle) * radius * 0.5;
-      const z = Math.sin(currentAngle) * radius * 0.3;
+      // Spherical interpolation for more realistic earth trajectory
+      const currentAngle = fromAngle + t * (toAngle - fromAngle);
+      const currentPhi = fromPhi + t * (toPhi - fromPhi);
+      
+      const x = Math.cos(currentPhi) * Math.cos(currentAngle) * radius;
+      const y = Math.sin(currentPhi) * radius;
+      const z = Math.cos(currentPhi) * Math.sin(currentAngle) * radius;
       
       trajectory.push([x, y, z]);
     }
     
-    console.log(`Generated test trajectory with ${trajectory.length} points:`, trajectory.slice(0, 2));
-    const travelTime = 3000; // 3 seconds travel time
+    console.log(`Generated ballistic trajectory with ${trajectory.length} points from tile ${fromTileId} to ${toTileId}`);
+    const travelTime = 4000; // 4 seconds travel time for better visibility
     const missile: Missile = {
       id: `missile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       fromTileId,
