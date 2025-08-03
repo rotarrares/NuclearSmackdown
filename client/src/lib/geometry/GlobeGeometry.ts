@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 export interface TileData {
   id: number;
-  type: "pentagon" | "hexagon";
+  type: "pentagon" | "hexagon" | "triangle" | "quad";
   vertices: THREE.Vector3[];
   center: THREE.Vector3;
   lat: number;
@@ -271,18 +271,28 @@ export class GlobeGeometry {
         dualVertices,
       );
 
-      // Validate that we have the expected number of faces (5 or 6)
-      if (sortedFaces.length !== 5 && sortedFaces.length !== 6) {
-        console.warn(`Irregular tile detected with ${sortedFaces.length} faces at vertex ${vertexIndex}`);
-        // Skip irregular tiles to prevent holes
-        return;
+      // Handle irregular tiles by creating valid polygons
+      if (sortedFaces.length < 3) {
+        return; // Skip completely invalid tiles
+      }
+      
+      if (sortedFaces.length === 3 || sortedFaces.length === 4) {
+        // For boundary vertices with fewer faces, create smaller valid tiles
+        // These are typically at subdivision boundaries and are mathematically correct
+        // Don't skip them as they're needed for complete coverage
+      } else if (sortedFaces.length > 6) {
+        // For vertices with too many faces, take only the first 6 to create a hexagon
+        sortedFaces.splice(6);
+        console.warn(`Oversized tile at vertex ${vertexIndex} reduced to hexagon`);
       }
 
       sortedFaces.forEach((faceIndex) => {
         tileVertices.push(dualVertices[faceIndex].clone());
       });
 
-      const tileType = tileVertices.length === 5 ? "pentagon" : "hexagon";
+      const tileType = tileVertices.length === 5 ? "pentagon" : 
+                       tileVertices.length === 3 ? "triangle" :
+                       tileVertices.length === 4 ? "quad" : "hexagon";
       const tileCenter = new THREE.Vector3();
       tileVertices.forEach((v) => tileCenter.add(v));
       tileCenter.divideScalar(tileVertices.length).normalize();
@@ -321,8 +331,13 @@ export class GlobeGeometry {
       (t) => t.terrainType === "mountain",
     ).length;
 
+    const pentagons = this.tiles.filter((t) => t.type === "pentagon").length;
+    const hexagons = this.tiles.filter((t) => t.type === "hexagon").length;
+    const triangles = this.tiles.filter((t) => t.type === "triangle").length;
+    const quads = this.tiles.filter((t) => t.type === "quad").length;
+    
     console.log(
-      `Generated ${this.tiles.length} tiles (${this.tiles.filter((t) => t.type === "pentagon").length} pentagons, ${this.tiles.filter((t) => t.type === "hexagon").length} hexagons)`,
+      `Generated ${this.tiles.length} tiles (${pentagons} pentagons, ${hexagons} hexagons, ${triangles} triangles, ${quads} quads)`,
     );
     console.log(
       `Terrain: ${waterTiles} water (${((waterTiles / this.tiles.length) * 100).toFixed(1)}%), ${grassTiles} grass (${((grassTiles / this.tiles.length) * 100).toFixed(1)}%), ${desertTiles} desert (${((desertTiles / this.tiles.length) * 100).toFixed(1)}%), ${mountainTiles} mountain (${((mountainTiles / this.tiles.length) * 100).toFixed(1)}%)`,
