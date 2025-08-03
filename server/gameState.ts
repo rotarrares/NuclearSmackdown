@@ -81,17 +81,46 @@ export class GameState {
 
   spawnPlayer(username: string): Player {
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    // Generate random color
+    // Generate random color with better contrast and more variety
     const colors = [
-      "#FF6B6B",
-      "#4ECDC4",
-      "#45B7D1",
-      "#96CEB4",
-      "#FFEAA7",
-      "#DDA0DD",
-      "#98D8C8",
+      "#FF6B6B", // Red
+      "#4ECDC4", // Teal
+      "#45B7D1", // Blue
+      "#96CEB4", // Mint Green
+      "#FFEAA7", // Yellow
+      "#DDA0DD", // Plum
+      "#98D8C8", // Aqua
+      "#FF8C42", // Orange
+      "#7209B7", // Purple
+      "#F72585", // Pink
+      "#277DA1", // Dark Blue
+      "#F8961E", // Amber
+      "#43AA8B", // Green
+      "#F94144", // Bright Red
+      "#577590", // Blue Grey
+      "#90E0EF", // Light Blue
+      "#F72D89", // Hot Pink
+      "#A663CC", // Lavender
+      "#4D5382", // Navy
+      "#F9DCC4", // Peach
+      "#FE6D73", // Coral
+      "#17C3B2", // Turquoise
+      "#FFCD3C", // Gold
+      "#FD9E02", // Dark Orange
+      "#C77DFF", // Light Purple
+      "#E0AAFF", // Pastel Purple
+      "#5390D9", // Sky Blue
+      "#7209B7", // Deep Purple
+      "#F72585", // Magenta
+      "#4CC9F0"  // Cyan
     ];
-    const color = colors[Math.floor(Math.random() * colors.length)];
+    
+    // Ensure we don't reuse colors of existing players
+    const usedColors = Array.from(this.players.values()).map(p => p.color);
+    const availableColors = colors.filter(c => !usedColors.includes(c));
+    const color = availableColors.length > 0 
+      ? availableColors[Math.floor(Math.random() * availableColors.length)]
+      : colors[Math.floor(Math.random() * colors.length)];
     const player: Player = {
       id: playerId,
       username,
