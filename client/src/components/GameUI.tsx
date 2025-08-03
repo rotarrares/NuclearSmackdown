@@ -105,7 +105,7 @@ const GameUI = () => {
         }}>
           <h1 style={{ margin: '0', fontSize: '28px' }}>🌍 Choose Your Territory</h1>
           <button
-            onClick={() => setGamePhase('waiting')}
+            onClick={() => useGameState.getState().setGamePhase('waiting')}
             style={{
               background: 'none',
               border: 'none',
@@ -142,6 +142,9 @@ const GameUI = () => {
           <div>🟡 Yellow = Desert (harder but viable)</div>
           <div>🔵 Blue = Water (cannot claim)</div>
           <div>⚫ Gray = Mountains (cannot claim)</div>
+        </div>
+        <div style={{ fontSize: '12px', color: '#999', marginTop: '15px', fontStyle: 'italic' }}>
+          Or click the ✕ button above to dismiss and spectate
         </div>
       </div>
     );
@@ -312,10 +315,16 @@ const GameUI = () => {
         <div>🖱️ Drag to rotate globe</div>
         <div>🔍 Scroll to zoom</div>
         <div>🎯 Click unclaimed tiles to start conquest</div>
-        <div>⬆️ Shift+Click to launch missiles</div>
+        <div>🏗️ Click owned tiles to build structures</div>
+        <div>🚀 <strong>Shift+Click to launch missiles</strong></div>
+        <div style={{ fontSize: '11px', color: '#ffcc99', marginLeft: '15px' }}>
+          • Build a missile silo first (100 gold)
+        </div>
+        <div style={{ fontSize: '11px', color: '#ffcc99', marginLeft: '15px' }}>
+          • Need 200 gold per missile launch
+        </div>
         <div>⚖️ Balance workers vs soldiers</div>
         <div>🎯 Set troop deployment level</div>
-        <div>⚔️ Conquest uses deployed troops</div>
       </div>
     </>
   );
