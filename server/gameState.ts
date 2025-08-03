@@ -96,7 +96,7 @@ export class GameState {
       id: playerId,
       username,
       color,
-      gold: 0,
+      gold: 1000, // Starting gold - enough for multiple missile silos and launches
       population: 500, // Starting population
       populationCap: 600, // Starting population cap
       workerRatio: 0.1, // 90% soldiers, 10% workers (workerRatio is workers percentage)

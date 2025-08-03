@@ -18,6 +18,7 @@ OpenFront.io is a web-based MMO real-time strategy game built around a 3D intera
 - **Advanced Missile Animation**: Animated red warheads travel along white trajectory tubes with yellow marker points and launch flash effects
 - **UI Improvements**: Added dismiss button to territory selection window and enhanced missile instructions
 - **Missile System Fixes**: Resolved server-client synchronization issues, proper gold validation, and missile silo requirements
+- **Starting Resources**: Increased starting gold from 0 to 1000 to enable immediate missile warfare and building construction
 
 ## User Preferences
 
