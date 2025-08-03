@@ -378,6 +378,23 @@ export class GameServer {
           missile: result.data.missile,
         },
       });
+      // Update player stats immediately after missile launch
+      this.broadcast({
+        type: "player_updated",
+        data: {
+          player: this.gameState.getPlayer(connection.playerId),
+        },
+      });
+      // Send immediate game state update
+      this.broadcast({
+        type: "game_state",
+        data: {
+          players: Array.from(this.gameState.getPlayers().values()),
+          tiles: Array.from(this.gameState.getTiles().values()),
+          missiles: Array.from(this.gameState.getMissiles().values()),
+          gameTime: this.gameState.getGameTime(),
+        },
+      });
       // Schedule missile impact
       setTimeout(() => {
         const impactResult = this.gameState.impactMissile(
@@ -395,9 +412,10 @@ export class GameServer {
         }
       }, result.data.missile.travelTime);
       console.log(
-        `Missile launched from ${data.fromTileId} to ${data.toTileId}`,
+        `Missile launched from ${data.fromTileId} to ${data.toTileId} by player ${connection.playerId}`,
       );
     } else {
+      console.log(`Missile launch failed: ${result.error}`);
       this.sendError(ws, result.error || "Cannot launch missile");
     }
   }

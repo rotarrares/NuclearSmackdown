@@ -11,11 +11,13 @@ OpenFront.io is a web-based MMO real-time strategy game built around a 3D intera
 - **Territory Expansion**: Fixed server-side adjacency checks to allow proper territory expansion
 - **Visual Feedback**: Added hover indicators and proper color coding for tile ownership
 - **Performance**: Optimized to ~80 manageable triangular tiles for smooth interaction
-- **Ballistic Missile System**: Complete implementation with left-click launching from Missile Silos
+- **Ballistic Missile System**: Complete implementation with Shift+Click launching from Missile Silos
 - **Trajectory Visualization**: Enhanced high-arc ballistic trajectories with animated warheads and launch effects
 - **Nuclear Blast Effects**: 2-tile radius damage affecting multiple tiles with 80% population loss and structure destruction
 - **Real-time Rendering**: Missiles persist in game state with proper trajectory calculation and spherical interpolation
 - **Advanced Missile Animation**: Animated red warheads travel along white trajectory tubes with yellow marker points and launch flash effects
+- **UI Improvements**: Added dismiss button to territory selection window and enhanced missile instructions
+- **Missile System Fixes**: Resolved server-client synchronization issues, proper gold validation, and missile silo requirements
 
 ## User Preferences
 

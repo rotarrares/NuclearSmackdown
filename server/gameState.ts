@@ -645,7 +645,18 @@ export class GameState {
     if (!fromTile || !toTile) {
       return { success: false, error: "Tile not found" };
     }
+    
+    // Check if fromTile is owned by the player and has a missile silo
+    if (fromTile.ownerId !== playerId) {
+      return { success: false, error: "Cannot launch missile from unowned tile" };
+    }
+    if (fromTile.structureType !== "missile_silo") {
+      return { success: false, error: "Need a missile silo to launch missiles" };
+    }
+    
     const missileCost = 200; // Gold cost for missile
+    console.log(`Player ${playerId} has ${player.gold} gold, needs ${missileCost} for missile launch`);
+    
     if (player.gold < missileCost) {
       return {
         success: false,
@@ -653,6 +664,7 @@ export class GameState {
       };
     }
     player.gold -= missileCost;
+    console.log(`Player ${playerId} gold after missile launch: ${player.gold}`);
     // Generate simple test trajectory
     console.log(`Creating missile from tile ${fromTileId} to tile ${toTileId}`);
     
