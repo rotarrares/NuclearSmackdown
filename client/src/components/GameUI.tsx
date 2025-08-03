@@ -82,7 +82,7 @@ const GameUI = () => {
   // Check if player has no territory - show spawn selection message  
   const ownedTiles = Array.from(tiles.values()).filter(t => t.ownerId === currentPlayer.id).length;
   
-  if (ownedTiles === 0) {
+  if (ownedTiles === 0 && gamePhase === 'playing') {
     return (
       <div style={{
         position: 'absolute',
@@ -94,9 +94,45 @@ const GameUI = () => {
         padding: '30px',
         borderRadius: '8px',
         textAlign: 'center',
-        maxWidth: '400px'
+        maxWidth: '400px',
+        border: '1px solid rgba(255, 255, 255, 0.2)'
       }}>
-        <h1 style={{ margin: '0 0 20px 0', fontSize: '28px' }}>🌍 Choose Your Territory</h1>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '20px'
+        }}>
+          <h1 style={{ margin: '0', fontSize: '28px' }}>🌍 Choose Your Territory</h1>
+          <button
+            onClick={() => setGamePhase('waiting')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#999',
+              cursor: 'pointer',
+              fontSize: '20px',
+              padding: '0',
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'none';
+              e.currentTarget.style.color = '#999';
+            }}
+            title="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
         <p style={{ margin: '0 0 20px 0', lineHeight: '1.4' }}>
           Click on any unclaimed grass or desert tile on the globe to establish your starting territory.
           You'll begin with 500 population to start your empire.
