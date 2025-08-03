@@ -172,35 +172,8 @@ export const useGameState = create<GameState>()(
   }))
 );
 
-// Auto-update population and gold over time
-useGameState.subscribe(
-  (state) => state.gameTime,
-  (gameTime) => {
-    const state = useGameState.getState();
-    if (!state.currentPlayer) return;
-    
-    // Update every second (assuming gameTime is in milliseconds)
-    const now = Date.now();
-    if (now - gameTime < 1000) return;
-    
-    const { currentPlayer, tiles } = state;
-    const ownedTiles = Array.from(tiles.values()).filter(t => t.ownerId === currentPlayer.id);
-    
-    // Calculate population growth (cities boost growth)
-    const baseGrowth = ownedTiles.length * 0.01;
-    const cityBonus = ownedTiles.filter(t => t.structureType === 'city').length * 0.05;
-    const populationGrowth = baseGrowth + cityBonus;
-    
-    // Calculate gold generation (workers generate gold)
-    const workers = currentPlayer.population * (1 - currentPlayer.workerRatio);
-    const goldPerSecond = workers * 0.1;
-    
-    // Update player stats
-    state.updatePlayer(currentPlayer.id, {
-      population: currentPlayer.population + populationGrowth,
-      gold: currentPlayer.gold + goldPerSecond
-    });
-  }
-);
+// REMOVED: Client-side gold generation to prevent sync issues
+// The server is the authoritative source for all player stats including gold
+// Only the server should update gold values to prevent desynchronization
 
 

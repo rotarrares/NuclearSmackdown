@@ -230,7 +230,9 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
           
         case 'player_updated':
           const updatedPlayer: Player = message.data.player;
+          // Server is authoritative - overwrite all player data including gold
           gameState.updatePlayer(updatedPlayer.id, updatedPlayer);
+          console.log(`Player ${updatedPlayer.id} updated: gold=${updatedPlayer.gold}, population=${updatedPlayer.population}`);
           break;
           
         case 'territory_expanded':
