@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 export interface TileData {
   id: number;
-  type: "pentagon" | "hexagon" | "triangle" | "quad";
+  type: "pentagon" | "hexagon";
   vertices: THREE.Vector3[];
   center: THREE.Vector3;
   lat: number;
@@ -175,8 +175,8 @@ export class GlobeGeometry {
       [9, 8, 1],
     ];
 
-    // Step 2: Subdivide to create geodesic polyhedron (frequency = 80 for balanced detail/performance)
-    const frequency = 80;
+    // Step 2: Subdivide to create geodesic polyhedron (frequency = 64 for higher detail)
+    const frequency = 64;
     const subdividedVertices: THREE.Vector3[] = [];
     const subdividedFaces: number[][] = [];
     const vertexMap = new Map<string, number>(); // To avoid duplicate vertices
@@ -199,8 +199,8 @@ export class GlobeGeometry {
             .addScaledVector(b, u)
             .addScaledVector(c, v)
             .normalize();
-          // Use vertex map to avoid duplicates with higher precision
-          const key = `${point.x.toFixed(10)},${point.y.toFixed(10)},${point.z.toFixed(10)}`;
+          // Use vertex map to avoid duplicates
+          const key = `${point.x.toFixed(8)},${point.y.toFixed(8)},${point.z.toFixed(8)}`;
           if (!vertexMap.has(key)) {
             vertexMap.set(key, subdividedVertices.length);
             subdividedVertices.push(point);
@@ -271,28 +271,11 @@ export class GlobeGeometry {
         dualVertices,
       );
 
-      // Handle irregular tiles by creating valid polygons
-      if (sortedFaces.length < 3) {
-        return; // Skip completely invalid tiles
-      }
-      
-      if (sortedFaces.length === 3 || sortedFaces.length === 4) {
-        // For boundary vertices with fewer faces, create smaller valid tiles
-        // These are typically at subdivision boundaries and are mathematically correct
-        // Don't skip them as they're needed for complete coverage
-      } else if (sortedFaces.length > 6) {
-        // For vertices with too many faces, take only the first 6 to create a hexagon
-        sortedFaces.splice(6);
-        console.warn(`Oversized tile at vertex ${vertexIndex} reduced to hexagon`);
-      }
-
       sortedFaces.forEach((faceIndex) => {
-        tileVertices.push(dualVertices[faceIndex].clone());
+        tileVertices.push(dualVertices[faceIndex]);
       });
 
-      const tileType = tileVertices.length === 5 ? "pentagon" : 
-                       tileVertices.length === 3 ? "triangle" :
-                       tileVertices.length === 4 ? "quad" : "hexagon";
+      const tileType = tileVertices.length === 5 ? "pentagon" : "hexagon";
       const tileCenter = new THREE.Vector3();
       tileVertices.forEach((v) => tileCenter.add(v));
       tileCenter.divideScalar(tileVertices.length).normalize();
@@ -331,13 +314,8 @@ export class GlobeGeometry {
       (t) => t.terrainType === "mountain",
     ).length;
 
-    const pentagons = this.tiles.filter((t) => t.type === "pentagon").length;
-    const hexagons = this.tiles.filter((t) => t.type === "hexagon").length;
-    const triangles = this.tiles.filter((t) => t.type === "triangle").length;
-    const quads = this.tiles.filter((t) => t.type === "quad").length;
-    
     console.log(
-      `Generated ${this.tiles.length} tiles (${pentagons} pentagons, ${hexagons} hexagons, ${triangles} triangles, ${quads} quads)`,
+      `Generated ${this.tiles.length} tiles (${this.tiles.filter((t) => t.type === "pentagon").length} pentagons, ${this.tiles.filter((t) => t.type === "hexagon").length} hexagons)`,
     );
     console.log(
       `Terrain: ${waterTiles} water (${((waterTiles / this.tiles.length) * 100).toFixed(1)}%), ${grassTiles} grass (${((grassTiles / this.tiles.length) * 100).toFixed(1)}%), ${desertTiles} desert (${((desertTiles / this.tiles.length) * 100).toFixed(1)}%), ${mountainTiles} mountain (${((mountainTiles / this.tiles.length) * 100).toFixed(1)}%)`,
@@ -427,35 +405,22 @@ export class GlobeGeometry {
     dualVertices: THREE.Vector3[],
   ): number[] {
     if (faceIndices.length < 3) return faceIndices;
-    
-    // Create tangent plane basis with improved stability
+    // Create tangent plane basis
     const normal = center.clone().normalize();
-    
-    // Choose a more stable reference vector
-    let up: THREE.Vector3;
-    if (Math.abs(normal.x) < 0.9) {
-      up = new THREE.Vector3(1, 0, 0);
-    } else if (Math.abs(normal.y) < 0.9) {
-      up = new THREE.Vector3(0, 1, 0);
-    } else {
-      up = new THREE.Vector3(0, 0, 1);
-    }
-    
+    const up =
+      Math.abs(normal.y) < 0.9
+        ? new THREE.Vector3(0, 1, 0)
+        : new THREE.Vector3(1, 0, 0);
     const u = new THREE.Vector3().crossVectors(normal, up).normalize();
-    const v = new THREE.Vector3().crossVectors(normal, u).normalize();
-    
-    // Calculate angles in tangent plane with better precision
+    const v = new THREE.Vector3().crossVectors(normal, u);
+    // Calculate angles in tangent plane
     const angles = faceIndices.map((faceIndex) => {
       const faceCenter = dualVertices[faceIndex];
-      const direction = faceCenter.clone().sub(center).normalize();
+      const direction = faceCenter.clone().sub(center);
       const x = direction.dot(u);
       const y = direction.dot(v);
-      let angle = Math.atan2(y, x);
-      // Normalize angle to [0, 2π) range
-      if (angle < 0) angle += 2 * Math.PI;
-      return { faceIndex, angle };
+      return { faceIndex, angle: Math.atan2(y, x) };
     });
-    
     // Sort by angle
     angles.sort((a, b) => a.angle - b.angle);
     return angles.map((a) => a.faceIndex);

@@ -10,13 +10,12 @@ OpenFront.io is a web-based MMO real-time strategy game built around a 3D intera
 - **Tile Interaction**: Implemented precise tile hover and click detection using separate mesh components
 - **Territory Expansion**: Fixed server-side adjacency checks to allow proper territory expansion
 - **Visual Feedback**: Added hover indicators and proper color coding for tile ownership
+- **Performance**: Optimized to ~80 manageable triangular tiles for smooth interaction
 - **Ballistic Missile System**: Complete implementation with left-click launching from Missile Silos
 - **Trajectory Visualization**: Enhanced high-arc ballistic trajectories with animated warheads and launch effects
 - **Nuclear Blast Effects**: 2-tile radius damage affecting multiple tiles with 80% population loss and structure destruction
 - **Real-time Rendering**: Missiles persist in game state with proper trajectory calculation and spherical interpolation
 - **Advanced Missile Animation**: Animated red warheads travel along white trajectory tubes with yellow marker points and launch flash effects
-- **Globe Detail Enhancement**: Increased frequency from 64 to 80, expanding from ~40,962 to ~64,000 tiles for enhanced detail with optimal performance
-- **UI Improvements**: Added dismiss button to territory selection window for better user experience
 
 ## User Preferences
 
@@ -28,12 +27,12 @@ Preferred communication style: Simple, everyday language.
 The client is built with React and TypeScript, utilizing Three.js for 3D globe rendering and WebGL graphics. The application uses a component-based architecture with:
 
 - **3D Globe Rendering**: Three.js with React Three Fiber for the interactive spherical world map
-- **Geodesic Geometry**: Custom GlobeGeometry class implementing icosahedral subdivision for seamless tile coverage (~64,000 tiles total)
+- **Geodesic Geometry**: Custom GlobeGeometry class implementing icosahedral subdivision for seamless tile coverage (4,002 tiles total)
 - **State Management**: Zustand stores for game state, multiplayer connection, and audio management
 - **UI Framework**: Radix UI components with Tailwind CSS for styling
 - **Real-time Communication**: WebSocket client for multiplayer synchronization
 
-The globe uses a sophisticated geodesic polyhedron approach, subdividing an icosahedron into approximately 64,000 tiles (12 pentagons, ~63,990 hexagons) to create a mathematically perfect spherical tiling system with enhanced detail.
+The globe uses a sophisticated geodesic polyhedron approach, subdividing an icosahedron into approximately 4,000 tiles (12 pentagons, 3,990 hexagons) to create a mathematically perfect spherical tiling system.
 
 ### Backend Architecture
 The server implements a Node.js/Express architecture with WebSocket support for real-time gameplay:
