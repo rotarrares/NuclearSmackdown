@@ -175,8 +175,8 @@ export class GlobeGeometry {
       [9, 8, 1],
     ];
 
-    // Step 2: Subdivide to create geodesic polyhedron (frequency = 64 for higher detail)
-    const frequency = 64;
+    // Step 2: Subdivide to create geodesic polyhedron (frequency = 80 for balanced detail/performance)
+    const frequency = 80;
     const subdividedVertices: THREE.Vector3[] = [];
     const subdividedFaces: number[][] = [];
     const vertexMap = new Map<string, number>(); // To avoid duplicate vertices
