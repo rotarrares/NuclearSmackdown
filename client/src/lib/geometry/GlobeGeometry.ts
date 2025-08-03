@@ -199,8 +199,8 @@ export class GlobeGeometry {
             .addScaledVector(b, u)
             .addScaledVector(c, v)
             .normalize();
-          // Use vertex map to avoid duplicates
-          const key = `${point.x.toFixed(8)},${point.y.toFixed(8)},${point.z.toFixed(8)}`;
+          // Use vertex map to avoid duplicates with higher precision
+          const key = `${point.x.toFixed(10)},${point.y.toFixed(10)},${point.z.toFixed(10)}`;
           if (!vertexMap.has(key)) {
             vertexMap.set(key, subdividedVertices.length);
             subdividedVertices.push(point);
@@ -271,8 +271,15 @@ export class GlobeGeometry {
         dualVertices,
       );
 
+      // Validate that we have the expected number of faces (5 or 6)
+      if (sortedFaces.length !== 5 && sortedFaces.length !== 6) {
+        console.warn(`Irregular tile detected with ${sortedFaces.length} faces at vertex ${vertexIndex}`);
+        // Skip irregular tiles to prevent holes
+        return;
+      }
+
       sortedFaces.forEach((faceIndex) => {
-        tileVertices.push(dualVertices[faceIndex]);
+        tileVertices.push(dualVertices[faceIndex].clone());
       });
 
       const tileType = tileVertices.length === 5 ? "pentagon" : "hexagon";
@@ -405,22 +412,35 @@ export class GlobeGeometry {
     dualVertices: THREE.Vector3[],
   ): number[] {
     if (faceIndices.length < 3) return faceIndices;
-    // Create tangent plane basis
+    
+    // Create tangent plane basis with improved stability
     const normal = center.clone().normalize();
-    const up =
-      Math.abs(normal.y) < 0.9
-        ? new THREE.Vector3(0, 1, 0)
-        : new THREE.Vector3(1, 0, 0);
+    
+    // Choose a more stable reference vector
+    let up: THREE.Vector3;
+    if (Math.abs(normal.x) < 0.9) {
+      up = new THREE.Vector3(1, 0, 0);
+    } else if (Math.abs(normal.y) < 0.9) {
+      up = new THREE.Vector3(0, 1, 0);
+    } else {
+      up = new THREE.Vector3(0, 0, 1);
+    }
+    
     const u = new THREE.Vector3().crossVectors(normal, up).normalize();
-    const v = new THREE.Vector3().crossVectors(normal, u);
-    // Calculate angles in tangent plane
+    const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+    
+    // Calculate angles in tangent plane with better precision
     const angles = faceIndices.map((faceIndex) => {
       const faceCenter = dualVertices[faceIndex];
-      const direction = faceCenter.clone().sub(center);
+      const direction = faceCenter.clone().sub(center).normalize();
       const x = direction.dot(u);
       const y = direction.dot(v);
-      return { faceIndex, angle: Math.atan2(y, x) };
+      let angle = Math.atan2(y, x);
+      // Normalize angle to [0, 2π) range
+      if (angle < 0) angle += 2 * Math.PI;
+      return { faceIndex, angle };
     });
+    
     // Sort by angle
     angles.sort((a, b) => a.angle - b.angle);
     return angles.map((a) => a.faceIndex);
