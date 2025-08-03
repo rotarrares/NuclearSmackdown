@@ -197,6 +197,18 @@ export const useMultiplayer = create<MultiplayerState>((set, get) => ({
       data: { fromTileId, toTileId }
     }));
   },
+
+  getLeaderboard: async () => {
+    try {
+      const response = await fetch('/api/game/leaderboard');
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error('Failed to fetch leaderboard:', error);
+    }
+    return [];
+  },
   
   handleMessage: (event: MessageEvent) => {
     try {
